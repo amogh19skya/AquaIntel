@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../routes/app_routes.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -50,6 +51,13 @@ class _SignInScreenState extends State<SignInScreen> {
       const SnackBar(
         content: Text('Sign in processing...'),
       ),
+    );
+
+    // Navigate to home screen
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.home,
+      (route) => false,
     );
   }
 
@@ -326,77 +334,21 @@ class _SignInScreenState extends State<SignInScreen> {
                             ),
                           ),
 
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 25),
 
-                          // =========================
-                          // OR CONTINUE WITH
-                          // =========================
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Divider(
-                                  color: Color(0xFF2D5B79),
-                                  thickness: 1,
-                                ),
-                              ),
-
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                ),
-                                child: Text(
-                                  'or continue with',
-                                  style: TextStyle(
-                                    color: textBlue,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-
-                              const Expanded(
-                                child: Divider(
-                                  color: Color(0xFF2D5B79),
-                                  thickness: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 18),
-
-                          // =========================
-                          // GOOGLE + APPLE
-                          // =========================
-                          Row(
-                            children: [
-
-                              // Google
-                              Expanded(
-                                child: _socialButton(
-                                  icon: Icons.language,
-                                  text: 'Google',
-                                  onTap: () {
-                                    // TODO: Google sign in
-                                  },
-                                ),
-                              ),
-
-                              const SizedBox(width: 10),
-
-                              // Apple
-                              Expanded(
-                                child: _socialButton(
-                                  icon: Icons.phone_android,
-                                  text: 'Apple',
-                                  border: Colors.white,
-                                  onTap: () {
-                                    // TODO: Apple sign in
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-
+// =========================
+// SIGN UP
+// =========================
+Center(
+  child: RichText(
+    text: TextSpan(
+      style: const TextStyle(
+        color: textBlue,
+        fontSize: 12,
+      ),
+    ),
+  ),
+),
                           const SizedBox(height: 25),
 
                           // =========================
@@ -416,7 +368,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                   WidgetSpan(
                                     child: GestureDetector(
                                       onTap: () {
-                                        // TODO: Navigate to Sign Up
+                                        Navigator.pushNamed(context, AppRoutes.signUp);
                                       },
                                       child: const Text(
                                         'Sign up',
