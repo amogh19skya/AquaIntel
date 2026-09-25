@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'reminder_form.dart';
 
 class ReminderScreen extends StatefulWidget {
   const ReminderScreen({super.key});
@@ -358,7 +359,12 @@ class _ReminderScreenState extends State<ReminderScreen>
         ),
         child: FloatingActionButton(
           onPressed: () {
-            _showAddReminderSheet(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ReminderFormScreen(),
+              ),
+            );
           },
           backgroundColor: Colors.transparent,
           elevation: 0,
