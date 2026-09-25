@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'reminder.dart';
+import 'setting.dart';
+import '../widgets/aqua_bottom_nav.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -307,49 +309,37 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       // ═══════════════════════════════════════
-      // FLOATING ACTION BUTTON
+      // BOTTOM NAVIGATION BAR (with centered FAB)
       // ═══════════════════════════════════════
-      floatingActionButton: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF29A8DF),
-              Color(0xFF1B8FC4),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: primaryBlue.withValues(alpha: 0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: () {
-            // TODO: Navigate to add aquarium screen
-          },
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          highlightElevation: 0,
-          child: const Icon(
-            Icons.add,
-            color: Colors.white,
-            size: 28,
-          ),
-        ),
+      bottomNavigationBar: AquaBottomNav(
+        currentIndex: _currentIndex,
+        onItemSelected: (index) {
+          if (index == 0) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ReminderScreen(),
+              ),
+            );
+            return;
+          }
+          if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SettingScreen(),
+              ),
+            );
+            return;
+          }
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        onFabPressed: () {
+          // TODO: Navigate to Add Aquarium screen
+        },
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-      // ═══════════════════════════════════════
-      // BOTTOM NAVIGATION BAR
-      // ═══════════════════════════════════════
-      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -566,84 +556,5 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ══════════════════════════════════════════════
-  // BOTTOM NAVIGATION BAR
-  // ══════════════════════════════════════════════
-  Widget _buildBottomNavBar() {
-    return Container(
-      height: 70,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(Icons.build_outlined, 'Maintenance', 0),
-          _buildNavItem(Icons.dashboard_outlined, 'Dashboard', 1),
-          const SizedBox(width: 48), // Space for FAB
-          _buildNavItem(Icons.menu_book_outlined, 'Library', 2),
-          _buildNavItem(Icons.settings_outlined, 'Settings', 3),
-        ],
-      ),
-    );
-  }
 
-  // ══════════════════════════════════════════════
-  // NAV ITEM
-  // ══════════════════════════════════════════════
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    final bool isSelected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () {
-        if (index == 0) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const ReminderScreen(),
-            ),
-          );
-          return;
-        }
-        setState(() {
-          _currentIndex = index;
-        });
-      },
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 65,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? primaryBlue : textBlue.withValues(alpha: 0.5),
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? primaryBlue
-                    : textBlue.withValues(alpha: 0.5),
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
