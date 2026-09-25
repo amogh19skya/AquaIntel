@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'reminder.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -9,6 +10,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 1; // Dashboard selected by default
+  final TextEditingController _chatController = TextEditingController();
 
   // ─── AquaIntel Color Palette (matching sign_in) ───
   static const Color backgroundColor = Color(0xFF0D2D47);
@@ -179,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // ─── AQUARIUM CARDS LIST ───
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 160),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -193,6 +195,112 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ],
+            ),
+
+            // ═══════════════════════════════════════
+            // FLOATING CHAT INPUT BAR
+            // ═══════════════════════════════════════
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: primaryBlue.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 6),
+                    // Sparkle / AI icon
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF29A8DF), Color(0xFF1B8FC4)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Text field
+                    Expanded(
+                      child: TextField(
+                        controller: _chatController,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Ask AquaIntel anything...',
+                          hintStyle: TextStyle(
+                            color: textBlue.withValues(alpha: 0.5),
+                            fontSize: 14,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
+                    ),
+                    // Send button
+                    GestureDetector(
+                      onTap: () {
+                        if (_chatController.text.isNotEmpty) {
+                          // TODO: Handle chat send
+                          _chatController.clear();
+                        }
+                      },
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF29A8DF),
+                              Color(0xFF1B8FC4),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: primaryBlue.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.send_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -498,6 +606,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool isSelected = _currentIndex == index;
     return GestureDetector(
       onTap: () {
+        if (index == 0) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ReminderScreen(),
+            ),
+          );
+          return;
+        }
         setState(() {
           _currentIndex = index;
         });
