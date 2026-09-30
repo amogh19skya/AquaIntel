@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'edit_profile.dart';
+import '../routes/app_routes.dart';
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({super.key});
@@ -586,7 +589,12 @@ class _SettingScreenState extends State<SettingScreen>
                 // Edit Profile button
                 GestureDetector(
                   onTap: () {
-                    _showSnackBar('Opening profile editor...');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EditProfileScreen(),
+                      ),
+                    );
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -1272,9 +1280,15 @@ class _SettingScreenState extends State<SettingScreen>
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              _showSnackBar('Logged out successfully');
+              await FirebaseAuth.instance.signOut();
+              if (!mounted) return;
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.signIn,
+                (route) => false,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF9800),

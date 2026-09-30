@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'reminder.dart';
 import 'setting.dart';
+import 'comtability_checker.dart';
 import '../widgets/aqua_bottom_nav.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -150,7 +151,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                    child: _buildCompatibilityCard(),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const CompatibilityCheckerScreen(),
+                          ),
+                        );
+                      },
+                      child: _buildCompatibilityCard(),
+                    ),
                   ),
                 ),
 
