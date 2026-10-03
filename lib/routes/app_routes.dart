@@ -10,6 +10,7 @@ class AppRoutes {
   static const String signIn = '/sign_in';
   static const String signUp = '/signup';
   static const String home = '/home';
+  static const String addAquarium = '/add-aquarium';
 
   // Route map for MaterialApp
   static Map<String, WidgetBuilder> get routes => {
