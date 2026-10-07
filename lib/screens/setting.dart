@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'edit_profile.dart';
 import '../routes/app_routes.dart';
+import '../services/settings_service.dart';
+import '../services/notification_service.dart';
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({super.key});
@@ -13,18 +15,24 @@ class SettingScreen extends StatefulWidget {
 
 class _SettingScreenState extends State<SettingScreen>
     with SingleTickerProviderStateMixin {
-  // ─── AquaIntel Color Palette ───
+  // ─────────────────────────────────────────────
+  // AquaIntel colours
+  // ─────────────────────────────────────────────
+
   static const Color backgroundColor = Color(0xFF0D2D47);
-  static const Color topColor = Color(0xFF205779);
-  static const Color cardColor = Color(0xFF1C4667);
+  static const Color surfaceColor = Color(0xFF163B5A);
+  static const Color dividerColor = Color(0xFF28506B);
   static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color textBlue = Color(0xFF70A9CC);
-  static const Color surfaceDark = Color(0xFF142F45);
+  static const Color textSecondary = Color(0xFF8FB3C9);
+  static const Color dangerColor = Color(0xFFEF5350);
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
-  // ─── Toggle states ───
+  // Firebase user
+  User? _currentUser;
+
+  // Settings
   bool _notificationsEnabled = true;
   bool _feedingAlerts = true;
   bool _waterChangeAlerts = true;
@@ -33,26 +41,63 @@ class _SettingScreenState extends State<SettingScreen>
   bool _hapticFeedback = true;
   bool _autoBackup = false;
 
-  // ─── Expandable section states ───
-  bool _notificationsExpanded = true;
-  bool _appearanceExpanded = false;
-  bool _dataExpanded = false;
+  // Temperature
+  int _selectedTempUnit = 0; // 0 = Celsius, 1 = Fahrenheit
 
-  // ─── Selected temperature unit ───
-  int _selectedTempUnit = 0; // 0 = °C, 1 = °F
+  final _settingsService = SettingsService();
+
+  final _notificationService = NotificationService();
 
   @override
   void initState() {
     super.initState();
+
+    _currentUser = FirebaseAuth.instance.currentUser;
+
     _animController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 350),
       vsync: this,
     );
+
     _fadeAnim = CurvedAnimation(
       parent: _animController,
       curve: Curves.easeOut,
     );
+
     _animController.forward();
+
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final notif = await _settingsService.getNotificationsEnabled();
+    final feeding = await _settingsService.getFeedingAlerts();
+    final water = await _settingsService.getWaterChangeAlerts();
+    final sound = await _settingsService.getSoundEnabled();
+    final haptic = await _settingsService.getHapticFeedback();
+    final dark = await _settingsService.getDarkMode();
+    final backup = await _settingsService.getAutoBackup();
+    final tempUnit = await _settingsService.getTemperatureUnit();
+
+    if (!mounted) return;
+
+    setState(() {
+      _notificationsEnabled = notif;
+      _feedingAlerts = feeding;
+      _waterChangeAlerts = water;
+      _soundEnabled = sound;
+      _hapticFeedback = haptic;
+      _darkMode = dark;
+      _autoBackup = backup;
+      _selectedTempUnit = tempUnit;
+    });
+  }
+
+  // Calls HapticFeedback only when the setting is ON.
+  Future<void> _haptic() async {
+    if (_hapticFeedback) {
+      HapticFeedback.lightImpact();
+    }
   }
 
   @override
@@ -61,6 +106,34 @@ class _SettingScreenState extends State<SettingScreen>
     super.dispose();
   }
 
+  // ─────────────────────────────────────────────
+  // Firebase user information
+  // ─────────────────────────────────────────────
+
+  String get _displayName {
+    final name = _currentUser?.displayName;
+
+    if (name != null && name.trim().isNotEmpty) {
+      return name.trim();
+    }
+
+    return 'Aquarist';
+  }
+
+  String get _displayEmail {
+    final email = _currentUser?.email;
+
+    if (email != null && email.trim().isNotEmpty) {
+      return email.trim();
+    }
+
+    return 'No email available';
+  }
+
+  // ─────────────────────────────────────────────
+  // Build
+  // ─────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,275 +141,186 @@ class _SettingScreenState extends State<SettingScreen>
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
-          child: Stack(
-            children: [
-              // ═══════════════════════════════════════
-              // TOP GRADIENT BACKGROUND
-              // ═══════════════════════════════════════
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 260,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        topColor,
-                        Color(0xFF174A6A),
-                        backgroundColor,
-                      ],
-                      stops: [0.0, 0.65, 1.0],
-                    ),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(30),
-                      bottomRight: Radius.circular(30),
-                    ),
-                  ),
-                ),
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // Header
+              SliverToBoxAdapter(
+                child: _buildHeader(),
               ),
 
-              // ═══════════════════════════════════════
-              // MAIN SCROLLABLE CONTENT
-              // ═══════════════════════════════════════
-              CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // ─── TOP BAR ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: Row(
+              // Main content
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle('Account'),
+
+                      const SizedBox(height: 10),
+
+                      _buildProfileSection(),
+
+                      const SizedBox(height: 28),
+
+                      _buildSectionTitle('Notifications'),
+
+                      const SizedBox(height: 10),
+
+                      _buildSettingsGroup(
                         children: [
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: cardColor.withValues(alpha: 0.6),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: primaryBlue.withValues(alpha: 0.15),
-                                  width: 1,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.arrow_back_ios_new,
-                                color: textBlue,
-                                size: 16,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: primaryBlue.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.water_drop,
-                              color: primaryBlue,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'AquaIntel',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const Spacer(),
-                          _buildHeaderIcon(Icons.notifications_outlined),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // ─── SETTINGS TITLE ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Settings',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Customize your AquaIntel experience.',
-                            style: TextStyle(
-                              color: textBlue.withValues(alpha: 0.85),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // ─── PROFILE HERO CARD ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                      child: _buildProfileHeroCard(),
-                    ),
-                  ),
-
-                  // ─── QUICK STATS ROW ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: _buildQuickStatsRow(),
-                    ),
-                  ),
-
-                  // ─── NOTIFICATIONS SECTION (Expandable) ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                      child: _buildExpandableSection(
-                        icon: Icons.notifications_active_outlined,
-                        title: 'Notifications',
-                        subtitle: _notificationsEnabled ? 'Enabled' : 'Disabled',
-                        accentColor: const Color(0xFFFF9800),
-                        isExpanded: _notificationsExpanded,
-                        onToggleExpand: () {
-                          setState(() {
-                            _notificationsExpanded = !_notificationsExpanded;
-                          });
-                        },
-                        children: [
-                          _buildToggleTile(
-                            icon: Icons.notifications_outlined,
+                          _buildSwitchRow(
+                            icon: Icons.notifications_none_rounded,
                             title: 'Push Notifications',
                             subtitle: 'Receive alerts on your device',
                             value: _notificationsEnabled,
-                            onChanged: (val) {
-                              HapticFeedback.lightImpact();
-                              setState(() => _notificationsEnabled = val);
+                            onChanged: (value) async {
+                              await _haptic();
+
+                              setState(() {
+                                _notificationsEnabled = value;
+                              });
+
+                              await _settingsService.setNotificationsEnabled(value);
+
+                              if (!mounted) return;
+
+                              _showSnackBar(
+                                value
+                                    ? 'Notifications enabled'
+                                    : 'Notifications disabled',
+                              );
                             },
                           ),
-                          _buildToggleTile(
+
+                          _buildDivider(),
+
+                          // Feeding Reminders – disabled visually when master is OFF.
+                          _buildSwitchRow(
                             icon: Icons.restaurant_outlined,
                             title: 'Feeding Reminders',
-                            subtitle: 'Alerts for scheduled feedings',
-                            value: _feedingAlerts,
-                            onChanged: (val) {
-                              HapticFeedback.lightImpact();
-                              setState(() => _feedingAlerts = val);
-                            },
+                            subtitle: _notificationsEnabled
+                                ? 'Alerts for scheduled feedings'
+                                : 'Enable Push Notifications first',
+                            value: _feedingAlerts && _notificationsEnabled,
+                            enabled: _notificationsEnabled,
+                            onChanged: _notificationsEnabled
+                                ? (value) async {
+                                    await _haptic();
+                                    setState(() => _feedingAlerts = value);
+                                    await _settingsService.setFeedingAlerts(value);
+                                    // Cancel feeding notifications if turned off.
+                                    if (!value) {
+                                      await _notificationService.cancelAllNotifications();
+                                    }
+                                  }
+                                : null,
                           ),
-                          _buildToggleTile(
+
+                          _buildDivider(),
+
+                          // Water Change Alerts – disabled visually when master is OFF.
+                          _buildSwitchRow(
                             icon: Icons.water_drop_outlined,
                             title: 'Water Change Alerts',
-                            subtitle: 'Reminders for water changes',
-                            value: _waterChangeAlerts,
-                            onChanged: (val) {
-                              HapticFeedback.lightImpact();
-                              setState(() => _waterChangeAlerts = val);
-                            },
+                            subtitle: _notificationsEnabled
+                                ? 'Reminders for water changes'
+                                : 'Enable Push Notifications first',
+                            value: _waterChangeAlerts && _notificationsEnabled,
+                            enabled: _notificationsEnabled,
+                            onChanged: _notificationsEnabled
+                                ? (value) async {
+                                    await _haptic();
+                                    setState(() => _waterChangeAlerts = value);
+                                    await _settingsService.setWaterChangeAlerts(value);
+                                    if (!value) {
+                                      await _notificationService.cancelAllNotifications();
+                                    }
+                                  }
+                                : null,
                           ),
-                          _buildToggleTile(
+
+                          _buildDivider(),
+
+                          _buildSwitchRow(
                             icon: Icons.volume_up_outlined,
                             title: 'Sound Effects',
                             subtitle: 'Play sounds for alerts',
                             value: _soundEnabled,
-                            onChanged: (val) {
-                              HapticFeedback.lightImpact();
-                              setState(() => _soundEnabled = val);
+                            onChanged: (value) async {
+                              await _haptic();
+                              setState(() => _soundEnabled = value);
+                              await _settingsService.setSoundEnabled(value);
                             },
                           ),
                         ],
                       ),
-                    ),
-                  ),
 
-                  // ─── APPEARANCE SECTION (Expandable) ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: _buildExpandableSection(
-                        icon: Icons.palette_outlined,
-                        title: 'Appearance',
-                        subtitle: _darkMode ? 'Dark Mode' : 'Light Mode',
-                        accentColor: const Color(0xFF7C4DFF),
-                        isExpanded: _appearanceExpanded,
-                        onToggleExpand: () {
-                          setState(() {
-                            _appearanceExpanded = !_appearanceExpanded;
-                          });
-                        },
+                      const SizedBox(height: 28),
+
+                      _buildSectionTitle('Preferences'),
+
+                      const SizedBox(height: 10),
+
+                      _buildSettingsGroup(
                         children: [
-                          _buildToggleTile(
+                          _buildSwitchRow(
                             icon: Icons.dark_mode_outlined,
                             title: 'Dark Mode',
-                            subtitle: 'Use dark theme throughout',
+                            subtitle: 'Use the dark appearance',
                             value: _darkMode,
-                            onChanged: (val) {
-                              HapticFeedback.lightImpact();
-                              setState(() => _darkMode = val);
+                            onChanged: (value) async {
+                              await _haptic();
+                              setState(() => _darkMode = value);
+                              await _settingsService.setDarkMode(value);
                             },
                           ),
-                          _buildToggleTile(
-                            icon: Icons.vibration,
+
+                          _buildDivider(),
+
+                          _buildSwitchRow(
+                            icon: Icons.vibration_outlined,
                             title: 'Haptic Feedback',
-                            subtitle: 'Vibrate on interactions',
+                            subtitle: 'Vibrate when interacting',
                             value: _hapticFeedback,
-                            onChanged: (val) {
+                            onChanged: (value) async {
+                              // Give one last haptic before potentially disabling it.
                               HapticFeedback.lightImpact();
-                              setState(() => _hapticFeedback = val);
+                              setState(() => _hapticFeedback = value);
+                              await _settingsService.setHapticFeedback(value);
                             },
                           ),
-                          _buildTemperatureUnitSelector(),
+
+                          _buildDivider(),
+
+                          _buildTemperatureRow(),
                         ],
                       ),
-                    ),
-                  ),
 
-                  // ─── DATA & STORAGE SECTION (Expandable) ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: _buildExpandableSection(
-                        icon: Icons.cloud_outlined,
-                        title: 'Data & Storage',
-                        subtitle: _autoBackup ? 'Auto-backup on' : 'Manual backup',
-                        accentColor: const Color(0xFF00BFA5),
-                        isExpanded: _dataExpanded,
-                        onToggleExpand: () {
-                          setState(() {
-                            _dataExpanded = !_dataExpanded;
-                          });
-                        },
+                      const SizedBox(height: 28),
+
+                      _buildSectionTitle('Data & Storage'),
+
+                      const SizedBox(height: 10),
+
+                      _buildSettingsGroup(
                         children: [
-                          _buildToggleTile(
-                            icon: Icons.backup_outlined,
+                          _buildSwitchRow(
+                            icon: Icons.cloud_outlined,
                             title: 'Auto Backup',
-                            subtitle: 'Sync data to cloud automatically',
+                            subtitle: 'Automatically sync your data',
                             value: _autoBackup,
-                            onChanged: (val) {
-                              HapticFeedback.lightImpact();
-                              setState(() => _autoBackup = val);
+                            onChanged: (value) async {
+                              await _haptic();
+                              setState(() => _autoBackup = value);
+                              await _settingsService.setAutoBackup(value);
                             },
                           ),
-                          _buildActionTile(
+
+                          _buildDivider(),
+
+                          _buildNavigationRow(
                             icon: Icons.download_outlined,
                             title: 'Export Data',
                             subtitle: 'Download your aquarium data',
@@ -344,147 +328,114 @@ class _SettingScreenState extends State<SettingScreen>
                               _showSnackBar('Exporting data...');
                             },
                           ),
-                          _buildActionTile(
+
+                          _buildDivider(),
+
+                          _buildNavigationRow(
                             icon: Icons.delete_sweep_outlined,
                             title: 'Clear Cache',
-                            subtitle: 'Free up storage space',
+                            subtitle: 'Remove temporary files',
+                            onTap: _showClearCacheDialog,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      _buildSectionTitle('About'),
+
+                      const SizedBox(height: 10),
+
+                      _buildSettingsGroup(
+                        children: [
+                          _buildNavigationRow(
+                            icon: Icons.info_outline_rounded,
+                            title: 'About AquaIntel',
+                            subtitle: 'Version, licenses and information',
+                            onTap: _showAboutSheet,
+                          ),
+
+                          _buildDivider(),
+
+                          _buildNavigationRow(
+                            icon: Icons.help_outline_rounded,
+                            title: 'Help & Support',
+                            subtitle: 'FAQs, contact and bug reports',
                             onTap: () {
-                              _showClearCacheDialog();
+                              _showSnackBar('Opening Help Center...');
+                            },
+                          ),
+
+                          _buildDivider(),
+
+                          _buildNavigationRow(
+                            icon: Icons.star_outline_rounded,
+                            title: 'Rate AquaIntel',
+                            subtitle: 'Leave a review',
+                            onTap: () {
+                              _showSnackBar('Opening store...');
                             },
                           ),
                         ],
                       ),
-                    ),
-                  ),
 
-                  // ─── GENERAL ACTIONS (Non-expandable cards) ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                      child: _buildSectionLabel('General'),
-                    ),
-                  ),
+                      const SizedBox(height: 28),
 
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                      child: _buildActionCard(
-                        icon: Icons.info_outline,
-                        title: 'About AquaIntel',
-                        subtitle: 'Version, licenses & info',
-                        onTap: () {
-                          _showAboutSheet();
-                        },
+                      _buildSectionTitle(
+                        'Account Actions',
+                        danger: true,
                       ),
-                    ),
-                  ),
 
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                      child: _buildActionCard(
-                        icon: Icons.help_outline,
-                        title: 'Help & Support',
-                        subtitle: 'FAQs, contact us, report a bug',
-                        onTap: () {
-                          _showSnackBar('Opening Help Center...');
-                        },
-                      ),
-                    ),
-                  ),
+                      const SizedBox(height: 10),
 
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                      child: _buildActionCard(
-                        icon: Icons.star_outline,
-                        title: 'Rate AquaIntel',
-                        subtitle: 'Love it? Let us know!',
-                        onTap: () {
-                          _showSnackBar('Opening store...');
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // ─── DANGER ZONE ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-                      child: _buildSectionLabel('Danger Zone'),
-                    ),
-                  ),
-
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                      child: _buildDangerCard(
-                        icon: Icons.logout_outlined,
-                        title: 'Log Out',
-                        subtitle: 'Sign out of your account',
-                        onTap: () {
-                          _showLogoutDialog();
-                        },
-                      ),
-                    ),
-                  ),
-
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                      child: _buildDangerCard(
-                        icon: Icons.delete_forever_outlined,
-                        title: 'Delete Account',
-                        subtitle: 'Permanently remove all data',
-                        onTap: () {
-                          _showDeleteAccountDialog();
-                        },
-                        isDestructive: true,
-                      ),
-                    ),
-                  ),
-
-                  // ─── FOOTER ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 40, 20, 40),
-                      child: Column(
+                      _buildSettingsGroup(
                         children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: primaryBlue.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.water_drop,
-                              color: primaryBlue.withValues(alpha: 0.4),
-                              size: 20,
-                            ),
+                          _buildDangerRow(
+                            icon: Icons.logout_rounded,
+                            title: 'Log Out',
+                            subtitle: 'Sign out of your account',
+                            color: const Color(0xFFFFA726),
+                            onTap: _showLogoutDialog,
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'AquaIntel v1.0.0',
-                            style: TextStyle(
-                              color: textBlue.withValues(alpha: 0.4),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Made with 💙 for aquarists',
-                            style: TextStyle(
-                              color: textBlue.withValues(alpha: 0.3),
-                              fontSize: 11,
-                            ),
+
+                          _buildDivider(),
+
+                          _buildDangerRow(
+                            icon: Icons.delete_outline_rounded,
+                            title: 'Delete Account',
+                            subtitle: 'Permanently remove your account',
+                            color: dangerColor,
+                            onTap: _showDeleteAccountDialog,
                           ),
                         ],
                       ),
-                    ),
+
+                      const SizedBox(height: 36),
+
+                      Center(
+                        child: Text(
+                          'AquaIntel v1.0.0',
+                          style: TextStyle(
+                            color: textSecondary.withValues(alpha: 0.45),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      Center(
+                        child: Text(
+                          'Aquarium management, made simpler.',
+                          style: TextStyle(
+                            color: textSecondary.withValues(alpha: 0.35),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -493,236 +444,158 @@ class _SettingScreenState extends State<SettingScreen>
     );
   }
 
-  // ══════════════════════════════════════════════
-  // HEADER ICON
-  // ══════════════════════════════════════════════
-  Widget _buildHeaderIcon(IconData icon) {
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: cardColor.withValues(alpha: 0.6),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: primaryBlue.withValues(alpha: 0.15),
-          width: 1,
-        ),
-      ),
-      child: Icon(
-        icon,
-        color: textBlue,
-        size: 20,
+  // ─────────────────────────────────────────────
+  // Header
+  // ─────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 19,
+            ),
+            color: textSecondary,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 40,
+            ),
+          ),
+
+          const SizedBox(width: 4),
+
+          const Text(
+            'Settings',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 23,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // ══════════════════════════════════════════════
-  // PROFILE HERO CARD
-  // ══════════════════════════════════════════════
-  Widget _buildProfileHeroCard() {
+  // ─────────────────────────────────────────────
+  // Section title
+  // ─────────────────────────────────────────────
+
+  Widget _buildSectionTitle(
+    String title, {
+    bool danger = false,
+  }) {
+    return Text(
+      title.toUpperCase(),
+      style: TextStyle(
+        color: danger
+            ? dangerColor.withValues(alpha: 0.85)
+            : textSecondary.withValues(alpha: 0.75),
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1.1,
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // Profile
+  // ─────────────────────────────────────────────
+
+  Widget _buildProfileSection() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E6B9A),
-            Color(0xFF29A8DF),
-            Color(0xFF1B8FC4),
-          ],
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: dividerColor.withValues(alpha: 0.65),
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: primaryBlue.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          // Avatar
+          // Simple avatar
           Container(
-            width: 60,
-            height: 60,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: primaryBlue.withValues(alpha: 0.12),
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.4),
-                width: 2,
-              ),
             ),
             child: const Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 30,
+              Icons.person_outline_rounded,
+              color: primaryBlue,
+              size: 25,
             ),
           ),
-          const SizedBox(width: 16),
-          // User info
+
+          const SizedBox(width: 14),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Aquarist',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 4),
                 Text(
-                  'aquarist@aquaintel.app',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
+                  _displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 8),
-                // Edit Profile button
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const EditProfileScreen(),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.edit_outlined,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          'Edit Profile',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+
+                const SizedBox(height: 3),
+
+                Text(
+                  _displayEmail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textSecondary.withValues(alpha: 0.75),
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-          // Arrow
-          Icon(
-            Icons.arrow_forward_ios,
-            color: Colors.white.withValues(alpha: 0.5),
-            size: 16,
-          ),
-        ],
-      ),
-    );
-  }
 
-  // ══════════════════════════════════════════════
-  // QUICK STATS ROW
-  // ══════════════════════════════════════════════
-  Widget _buildQuickStatsRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatChip(
-            icon: Icons.water,
-            label: 'Tanks',
-            value: '1',
-            color: primaryBlue,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildStatChip(
-            icon: Icons.alarm,
-            label: 'Reminders',
-            value: '5',
-            color: const Color(0xFFFF9800),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildStatChip(
-            icon: Icons.calendar_today,
-            label: 'Days Active',
-            value: '42',
-            color: const Color(0xFF66BB6A),
-          ),
-        ),
-      ],
-    );
-  }
+          TextButton(
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EditProfileScreen(),
+                ),
+              );
 
-  Widget _buildStatChip({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: 0.15),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+              final updatedUser =
+                  FirebaseAuth.instance.currentUser;
+
+              if (!mounted) return;
+
+              setState(() {
+                _currentUser = updatedUser;
+              });
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: primaryBlue,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
             ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: textBlue.withValues(alpha: 0.6),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
+            child: const Text(
+              'Edit',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -730,228 +603,70 @@ class _SettingScreenState extends State<SettingScreen>
     );
   }
 
-  // ══════════════════════════════════════════════
-  // SECTION LABEL
-  // ══════════════════════════════════════════════
-  Widget _buildSectionLabel(String title) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 18,
-          decoration: BoxDecoration(
-            color: title == 'Danger Zone'
-                ? const Color(0xFFEF5350)
-                : primaryBlue,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: TextStyle(
-            color: title == 'Danger Zone'
-                ? const Color(0xFFEF5350)
-                : Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
+  // ─────────────────────────────────────────────
+  // Settings group
+  // ─────────────────────────────────────────────
 
-  // ══════════════════════════════════════════════
-  // EXPANDABLE SECTION
-  // ══════════════════════════════════════════════
-  Widget _buildExpandableSection({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color accentColor,
-    required bool isExpanded,
-    required VoidCallback onToggleExpand,
+  Widget _buildSettingsGroup({
     required List<Widget> children,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(18),
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isExpanded
-              ? accentColor.withValues(alpha: 0.25)
-              : primaryBlue.withValues(alpha: 0.08),
-          width: 1,
+          color: dividerColor.withValues(alpha: 0.65),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        children: [
-          // Header
-          GestureDetector(
-            onTap: onToggleExpand,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: accentColor, size: 22),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: textBlue.withValues(alpha: 0.6),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: isExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      color: textBlue.withValues(alpha: 0.5),
-                      size: 24,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Expandable content
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    height: 1,
-                    color: primaryBlue.withValues(alpha: 0.08),
-                  ),
-                ),
-                ...children,
-                const SizedBox(height: 8),
-              ],
-            ),
-            crossFadeState: isExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
-            sizeCurve: Curves.easeInOut,
-          ),
-        ],
+        children: children,
       ),
     );
   }
 
-  // ══════════════════════════════════════════════
-  // TOGGLE TILE (inside expandable)
-  // ══════════════════════════════════════════════
-  Widget _buildToggleTile({
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 58),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: dividerColor.withValues(alpha: 0.5),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // Switch row
+  // ─────────────────────────────────────────────
+
+  Widget _buildSwitchRow({
     required IconData icon,
     required String title,
     required String subtitle,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    // null = row is visually disabled (master switch is OFF)
+    required ValueChanged<bool>? onChanged,
+    bool enabled = true,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: textBlue.withValues(alpha: 0.6),
-            size: 20,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: textBlue.withValues(alpha: 0.45),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: primaryBlue,
-            activeTrackColor: primaryBlue.withValues(alpha: 0.3),
-            inactiveThumbColor: textBlue.withValues(alpha: 0.4),
-            inactiveTrackColor: surfaceDark.withValues(alpha: 0.6),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════
-  // ACTION TILE (inside expandable, tappable)
-  // ══════════════════════════════════════════════
-  Widget _buildActionTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+    final rowOpacity = enabled ? 1.0 : 0.4;
+    return Opacity(
+      opacity: rowOpacity,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: textBlue.withValues(alpha: 0.6),
-              size: 20,
+            SizedBox(
+              width: 28,
+              child: Icon(
+                icon,
+                color: textSecondary.withValues(alpha: 0.7),
+                size: 20,
+              ),
             ),
+
             const SizedBox(width: 14),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -964,20 +679,25 @@ class _SettingScreenState extends State<SettingScreen>
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+
+                  const SizedBox(height: 2),
+
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: textBlue.withValues(alpha: 0.45),
+                      color: textSecondary.withValues(alpha: 0.6),
                       fontSize: 11,
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(
-              Icons.chevron_right,
-              color: textBlue.withValues(alpha: 0.3),
-              size: 20,
+
+            Switch.adaptive(
+              value: value,
+              onChanged: onChanged,
+              activeTrackColor: primaryBlue.withValues(alpha: 0.45),
+              activeThumbColor: primaryBlue,
             ),
           ],
         ),
@@ -985,20 +705,93 @@ class _SettingScreenState extends State<SettingScreen>
     );
   }
 
-  // ══════════════════════════════════════════════
-  // TEMPERATURE UNIT SELECTOR
-  // ══════════════════════════════════════════════
-  Widget _buildTemperatureUnitSelector() {
+  // ─────────────────────────────────────────────
+  // Navigation row
+  // ─────────────────────────────────────────────
+
+  Widget _buildNavigationRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 28,
+                child: Icon(
+                  icon,
+                  color: textSecondary.withValues(alpha: 0.7),
+                  size: 20,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
+                    const SizedBox(height: 2),
+
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: textSecondary.withValues(alpha: 0.6),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Icon(
+                Icons.chevron_right_rounded,
+                color: textSecondary.withValues(alpha: 0.4),
+                size: 21,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // Temperature
+  // ─────────────────────────────────────────────
+
+  Widget _buildTemperatureRow() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
         children: [
-          Icon(
-            Icons.thermostat_outlined,
-            color: textBlue.withValues(alpha: 0.6),
-            size: 20,
+          SizedBox(
+            width: 28,
+            child: Icon(
+              Icons.thermostat_outlined,
+              color: textSecondary.withValues(alpha: 0.7),
+              size: 20,
+            ),
           ),
+
           const SizedBox(width: 14),
+
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1011,8 +804,9 @@ class _SettingScreenState extends State<SettingScreen>
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                SizedBox(height: 2),
                 Text(
-                  'Display temperature format',
+                  'Choose how temperature is displayed',
                   style: TextStyle(
                     color: Color(0xFF70A9CC),
                     fontSize: 11,
@@ -1021,252 +815,185 @@ class _SettingScreenState extends State<SettingScreen>
               ],
             ),
           ),
-          // Segmented toggle
-          Container(
-            decoration: BoxDecoration(
-              color: surfaceDark,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            padding: const EdgeInsets.all(3),
-            child: Row(
-              children: [
-                _buildUnitChip('°C', 0),
-                const SizedBox(width: 4),
-                _buildUnitChip('°F', 1),
-              ],
-            ),
-          ),
+
+          _buildTemperatureSelector(),
         ],
       ),
     );
   }
 
-  Widget _buildUnitChip(String label, int index) {
-    final isSelected = _selectedTempUnit == index;
+  Widget _buildTemperatureSelector() {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          _buildTemperatureOption('°C', 0),
+          _buildTemperatureOption('°F', 1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTemperatureOption(
+    String label,
+    int index,
+  ) {
+    final selected = _selectedTempUnit == index;
+
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
+      onTap: () async {
+        await _haptic();
         setState(() => _selectedTempUnit = index);
+        await _settingsService.setTemperatureUnit(index);
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 9,
+          vertical: 6,
+        ),
         decoration: BoxDecoration(
-          color: isSelected
-              ? primaryBlue.withValues(alpha: 0.3)
+          color: selected
+              ? primaryBlue.withValues(alpha: 0.18)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: isSelected
-              ? Border.all(
-                  color: primaryBlue.withValues(alpha: 0.5),
-                  width: 1,
-                )
-              : null,
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : textBlue.withValues(alpha: 0.5),
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+            color: selected
+                ? Colors.white
+                : textSecondary.withValues(alpha: 0.6),
+            fontSize: 12,
+            fontWeight: selected
+                ? FontWeight.w600
+                : FontWeight.w400,
           ),
         ),
       ),
     );
   }
 
-  // ══════════════════════════════════════════════
-  // ACTION CARD (standalone, non-expandable)
-  // ══════════════════════════════════════════════
-  Widget _buildActionCard({
+  // ─────────────────────────────────────────────
+  // Danger row
+  // ─────────────────────────────────────────────
+
+  Widget _buildDangerRow({
     required IconData icon,
     required String title,
     required String subtitle,
+    required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: primaryBlue.withValues(alpha: 0.08),
-            width: 1,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 28,
+                child: Icon(
+                  icon,
+                  color: color.withValues(alpha: 0.85),
+                  size: 20,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: color.withValues(alpha: 0.95),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
+                    const SizedBox(height: 2),
+
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: textSecondary.withValues(alpha: 0.6),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Icon(
+                Icons.chevron_right_rounded,
+                color: color.withValues(alpha: 0.4),
+                size: 21,
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: primaryBlue.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: primaryBlue, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: textBlue.withValues(alpha: 0.5),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: textBlue.withValues(alpha: 0.4),
-              size: 22,
-            ),
-          ],
         ),
       ),
     );
   }
 
-  // ══════════════════════════════════════════════
-  // DANGER CARD
-  // ══════════════════════════════════════════════
-  Widget _buildDangerCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    bool isDestructive = false,
-  }) {
-    final dangerColor =
-        isDestructive ? const Color(0xFFEF5350) : const Color(0xFFFF9800);
+  // ─────────────────────────────────────────────
+  // Snackbar
+  // ─────────────────────────────────────────────
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: dangerColor.withValues(alpha: 0.2),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: dangerColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: dangerColor, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: dangerColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: textBlue.withValues(alpha: 0.5),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: dangerColor.withValues(alpha: 0.4),
-              size: 22,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════
-  // DIALOGS & SHEETS
-  // ══════════════════════════════════════════════
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(
+            color: Colors.white,
+          ),
         ),
-        backgroundColor: cardColor,
+        backgroundColor: surfaceColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
     );
   }
+
+  // ─────────────────────────────────────────────
+  // Logout
+  // ─────────────────────────────────────────────
 
   void _showLogoutDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: cardColor,
+        backgroundColor: surfaceColor,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
         ),
         title: const Text(
           'Log Out',
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
           ),
         ),
         content: Text(
           'Are you sure you want to log out of AquaIntel?',
           style: TextStyle(
-            color: textBlue.withValues(alpha: 0.8),
+            color: textSecondary.withValues(alpha: 0.85),
+            height: 1.4,
           ),
         ),
         actions: [
@@ -1275,60 +1002,61 @@ class _SettingScreenState extends State<SettingScreen>
             child: Text(
               'Cancel',
               style: TextStyle(
-                color: textBlue.withValues(alpha: 0.6),
+                color: textSecondary.withValues(alpha: 0.8),
               ),
             ),
           ),
-          ElevatedButton(
+
+          TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
+
               await FirebaseAuth.instance.signOut();
+
               if (!mounted) return;
+
               Navigator.pushNamedAndRemoveUntil(
                 context,
                 AppRoutes.signIn,
                 (route) => false,
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF9800),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            child: const Text(
+              'Log Out',
+              style: TextStyle(
+                color: Color(0xFFFFA726),
+                fontWeight: FontWeight.w600,
               ),
             ),
-            child: const Text('Log Out'),
           ),
         ],
       ),
     );
   }
+
+  // ─────────────────────────────────────────────
+  // Delete account
+  // ─────────────────────────────────────────────
 
   void _showDeleteAccountDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: cardColor,
+        backgroundColor: surfaceColor,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
         ),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber, color: Color(0xFFEF5350), size: 24),
-            SizedBox(width: 10),
-            Text(
-              'Delete Account',
-              style: TextStyle(
-                color: Color(0xFFEF5350),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(
+            color: dangerColor,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         content: Text(
           'This action is permanent and cannot be undone. All your aquarium data, reminders, and settings will be deleted forever.',
           style: TextStyle(
-            color: textBlue.withValues(alpha: 0.8),
+            color: textSecondary.withValues(alpha: 0.85),
             height: 1.5,
           ),
         ),
@@ -1338,48 +1066,55 @@ class _SettingScreenState extends State<SettingScreen>
             child: Text(
               'Cancel',
               style: TextStyle(
-                color: textBlue.withValues(alpha: 0.6),
+                color: textSecondary.withValues(alpha: 0.8),
               ),
             ),
           ),
-          ElevatedButton(
+
+          TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _showSnackBar('Account deletion requested');
+
+              _showSnackBar(
+                'Account deletion requested',
+              );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF5350),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                color: dangerColor,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            child: const Text('Delete Forever'),
           ),
         ],
       ),
     );
   }
+
+  // ─────────────────────────────────────────────
+  // Clear cache
+  // ─────────────────────────────────────────────
 
   void _showClearCacheDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: cardColor,
+        backgroundColor: surfaceColor,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
         ),
         title: const Text(
           'Clear Cache',
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
           ),
         ),
         content: Text(
           'This will remove temporary files and cached data. Your aquarium data will not be affected.',
           style: TextStyle(
-            color: textBlue.withValues(alpha: 0.8),
+            color: textSecondary.withValues(alpha: 0.85),
             height: 1.5,
           ),
         ),
@@ -1389,132 +1124,159 @@ class _SettingScreenState extends State<SettingScreen>
             child: Text(
               'Cancel',
               style: TextStyle(
-                color: textBlue.withValues(alpha: 0.6),
+                color: textSecondary.withValues(alpha: 0.8),
               ),
             ),
           ),
-          ElevatedButton(
+
+          TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _showSnackBar('Cache cleared successfully');
+
+              _showSnackBar(
+                'Cache cleared successfully',
+              );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryBlue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            child: const Text(
+              'Clear',
+              style: TextStyle(
+                color: primaryBlue,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            child: const Text('Clear'),
           ),
         ],
       ),
     );
   }
 
+  // ─────────────────────────────────────────────
+  // About sheet
+  // ─────────────────────────────────────────────
+
   void _showAboutSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Color(0xFF1C4667),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Drag handle
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: textBlue.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Logo
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF29A8DF), Color(0xFF1B8FC4)],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: primaryBlue.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.water_drop,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'AquaIntel',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Version 1.0.0',
-              style: TextStyle(
-                color: textBlue.withValues(alpha: 0.6),
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Your intelligent companion for aquarium management. Monitor, maintain, and master your aquatic ecosystem.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: textBlue.withValues(alpha: 0.7),
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Info rows
-            _buildAboutRow(Icons.code, 'Developer', 'AquaIntel Team'),
-            const SizedBox(height: 10),
-            _buildAboutRow(Icons.mail_outline, 'Contact', 'hello@aquaintel.app'),
-            const SizedBox(height: 10),
-            _buildAboutRow(Icons.gavel, 'License', 'MIT License'),
-            const SizedBox(height: 24),
-          ],
+      backgroundColor: surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(16),
         ),
       ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              24,
+              12,
+              24,
+              24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: textSecondary.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                const Text(
+                  'About AquaIntel',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  'Version 1.0.0',
+                  style: TextStyle(
+                    color: textSecondary.withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                Text(
+                  'AquaIntel helps aquarium owners keep track of their tanks, maintenance, reminders and aquarium information in one place.',
+                  style: TextStyle(
+                    color: textSecondary.withValues(alpha: 0.8),
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                _buildAboutRow(
+                  Icons.code_outlined,
+                  'Developer',
+                  'AquaIntel Team',
+                ),
+
+                const SizedBox(height: 14),
+
+                _buildAboutRow(
+                  Icons.mail_outline,
+                  'Contact',
+                  'hello@aquaintel.app',
+                ),
+
+                const SizedBox(height: 14),
+
+                _buildAboutRow(
+                  Icons.gavel_outlined,
+                  'License',
+                  'MIT License',
+                ),
+
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildAboutRow(IconData icon, String label, String value) {
+  Widget _buildAboutRow(
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Row(
       children: [
-        Icon(icon, color: primaryBlue, size: 18),
+        Icon(
+          icon,
+          color: primaryBlue.withValues(alpha: 0.8),
+          size: 19,
+        ),
+
         const SizedBox(width: 12),
+
         Text(
           label,
           style: TextStyle(
-            color: textBlue.withValues(alpha: 0.6),
+            color: textSecondary.withValues(alpha: 0.65),
             fontSize: 13,
           ),
         ),
+
         const Spacer(),
+
         Text(
           value,
           style: const TextStyle(

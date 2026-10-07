@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/aquarium_model.dart';
 import '../services/aquarium_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/aquarium_card.dart';
 import 'reminder.dart';
 import 'setting.dart';
@@ -16,9 +17,11 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with WidgetsBindingObserver {
   int _currentIndex = 1; // Dashboard selected by default
   final AquariumService _aquariumService = AquariumService();
+  final NotificationService _notificationService = NotificationService();
 
   // ─── AquaIntel Color Palette ───
   static const Color backgroundColor = Color(0xFF0D2D47);
@@ -26,6 +29,35 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color cardColor = Color(0xFF1C4667);
   static const Color primaryBlue = Color(0xFF29A8DF);
   static const Color textBlue = Color(0xFF70A9CC);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Check if app was opened by tapping a notification.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPendingNavigation());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When the app comes back to foreground (e.g., from notification tap).
+    if (state == AppLifecycleState.resumed) {
+      _checkPendingNavigation();
+    }
+  }
+
+  void _checkPendingNavigation() {
+    final pending = _notificationService.consumePendingNavigation();
+    if (pending != null && mounted) {
+      Navigator.of(context).pushNamed(pending);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -312,8 +344,6 @@ Positioned(
     ),
   ),
 ),
-```
-
           ],
         ),
       ),

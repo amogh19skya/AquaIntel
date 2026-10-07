@@ -38,6 +38,9 @@ dependencies:
   firebase_core: ^4.15.0
   firebase_auth: ^6.7.0
   cloud_firestore: ^6.10.0
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:

@@ -3,6 +3,7 @@ import '../onboarding/splashscreen.dart';
 import '../auth/sign_in.dart';
 import '../auth/sign_up.dart';
 import '../screens/home.dart';
+import '../screens/reminder.dart';
 
 class AppRoutes {
   // Route constants
@@ -11,6 +12,7 @@ class AppRoutes {
   static const String signUp = '/signup';
   static const String home = '/home';
   static const String addAquarium = '/add-aquarium';
+  static const String reminders = '/reminders';
 
   // Route map for MaterialApp
   static Map<String, WidgetBuilder> get routes => {
@@ -18,5 +20,6 @@ class AppRoutes {
         signIn: (context) => const SignInScreen(),
         signUp: (context) => const SignupPage(),
         home: (context) => const HomeScreen(),
+        reminders: (context) => const ReminderScreen(),
       };
 }

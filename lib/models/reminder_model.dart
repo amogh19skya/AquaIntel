@@ -1,110 +1,156 @@
-/// Data model for a maintenance reminder / scheduled task.
-///
-/// This model captures everything the user inputs via the
-/// "Schedule Maintenance" form and can be serialised to / from
-/// JSON for API or local‑storage persistence.
-class Reminder {
-  final String? id;
-  final String tankName;
-  final String taskType; // 'Fish Feed', 'Water Change', 'Tank Cleaning', 'Filter Wash'
-  final DateTime scheduledDate;
-  final DateTime scheduledTime;
-  final bool isCompleted;
-  final DateTime? createdAt;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-  Reminder({
+/// All supported reminder task types.
+enum ReminderType {
+  feeding,
+  waterChange,
+  filterCleaning,
+  tankCleaning,
+  medication,
+  maintenance,
+  custom,
+}
+
+extension ReminderTypeExtension on ReminderType {
+  String get label {
+    switch (this) {
+      case ReminderType.feeding:
+        return 'Feeding';
+      case ReminderType.waterChange:
+        return 'Water Change';
+      case ReminderType.filterCleaning:
+        return 'Filter Cleaning';
+      case ReminderType.tankCleaning:
+        return 'Tank Cleaning';
+      case ReminderType.medication:
+        return 'Medication';
+      case ReminderType.maintenance:
+        return 'Maintenance';
+      case ReminderType.custom:
+        return 'Custom';
+    }
+  }
+
+  static ReminderType fromString(String value) {
+    switch (value) {
+      case 'Feeding':
+        return ReminderType.feeding;
+      case 'Water Change':
+        return ReminderType.waterChange;
+      case 'Filter Cleaning':
+        return ReminderType.filterCleaning;
+      case 'Tank Cleaning':
+        return ReminderType.tankCleaning;
+      case 'Medication':
+        return ReminderType.medication;
+      case 'Maintenance':
+        return ReminderType.maintenance;
+      case 'Custom':
+      default:
+        return ReminderType.custom;
+    }
+  }
+}
+
+/// Data model for a maintenance reminder stored under
+/// `users/{userId}/reminders/{reminderId}` in Cloud Firestore.
+class ReminderModel {
+  final String? id;
+  final String title;
+  final String description;
+  final ReminderType type;
+  final String? aquariumId;
+  final String aquariumName;
+  final DateTime scheduledDateTime;
+  final bool isCompleted;
+  final bool notificationEnabled;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final int notificationId;
+
+  ReminderModel({
     this.id,
-    required this.tankName,
-    required this.taskType,
-    required this.scheduledDate,
-    required this.scheduledTime,
+    required this.title,
+    required this.description,
+    required this.type,
+    this.aquariumId,
+    required this.aquariumName,
+    required this.scheduledDateTime,
     this.isCompleted = false,
-    this.createdAt,
+    this.notificationEnabled = true,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.notificationId,
   });
 
-  // ─── Serialisation helpers ───
-
-  /// Create a [Reminder] from a JSON map (e.g. API response).
-  factory Reminder.fromJson(Map<String, dynamic> json) {
-    return Reminder(
-      id: json['id'] as String?,
-      tankName: json['tank_name'] as String? ?? '',
-      taskType: json['task_type'] as String? ?? '',
-      scheduledDate: json['scheduled_date'] != null
-          ? DateTime.parse(json['scheduled_date'] as String)
-          : DateTime.now(),
-      scheduledTime: json['scheduled_time'] != null
-          ? DateTime.parse(json['scheduled_time'] as String)
-          : DateTime.now(),
-      isCompleted: json['is_completed'] as bool? ?? false,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
-          : null,
+  factory ReminderModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return ReminderModel(
+      id: doc.id,
+      title: data['title'] as String? ?? '',
+      description: data['description'] as String? ?? '',
+      type: ReminderTypeExtension.fromString(data['type'] as String? ?? 'Custom'),
+      aquariumId: data['aquariumId'] as String?,
+      aquariumName: data['aquariumName'] as String? ?? '',
+      scheduledDateTime: (data['scheduledDateTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isCompleted: data['isCompleted'] as bool? ?? false,
+      notificationEnabled: data['notificationEnabled'] as bool? ?? true,
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      notificationId: data['notificationId'] as int? ?? 0,
     );
   }
 
-  /// Convert this [Reminder] to a JSON‑compatible map.
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toFirestore() {
     return {
-      if (id != null) 'id': id,
-      'tank_name': tankName,
-      'task_type': taskType,
-      'scheduled_date': scheduledDate.toIso8601String(),
-      'scheduled_time': scheduledTime.toIso8601String(),
-      'is_completed': isCompleted,
-      if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+      'title': title,
+      'description': description,
+      'type': type.label,
+      'aquariumId': aquariumId,
+      'aquariumName': aquariumName,
+      'scheduledDateTime': Timestamp.fromDate(scheduledDateTime),
+      'isCompleted': isCompleted,
+      'notificationEnabled': notificationEnabled,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+      'notificationId': notificationId,
     };
   }
 
-  /// Return a copy of this reminder with selected fields overridden.
-  Reminder copyWith({
+  ReminderModel copyWith({
     String? id,
-    String? tankName,
-    String? taskType,
-    DateTime? scheduledDate,
-    DateTime? scheduledTime,
+    String? title,
+    String? description,
+    ReminderType? type,
+    String? aquariumId,
+    String? aquariumName,
+    DateTime? scheduledDateTime,
     bool? isCompleted,
+    bool? notificationEnabled,
     DateTime? createdAt,
+    DateTime? updatedAt,
+    int? notificationId,
   }) {
-    return Reminder(
+    return ReminderModel(
       id: id ?? this.id,
-      tankName: tankName ?? this.tankName,
-      taskType: taskType ?? this.taskType,
-      scheduledDate: scheduledDate ?? this.scheduledDate,
-      scheduledTime: scheduledTime ?? this.scheduledTime,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      type: type ?? this.type,
+      aquariumId: aquariumId ?? this.aquariumId,
+      aquariumName: aquariumName ?? this.aquariumName,
+      scheduledDateTime: scheduledDateTime ?? this.scheduledDateTime,
       isCompleted: isCompleted ?? this.isCompleted,
+      notificationEnabled: notificationEnabled ?? this.notificationEnabled,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      notificationId: notificationId ?? this.notificationId,
     );
   }
 
-  @override
-  String toString() {
-    return 'Reminder(id: $id, tankName: $tankName, taskType: $taskType, '
-        'date: $scheduledDate, time: $scheduledTime, '
-        'completed: $isCompleted)';
-  }
+  bool get isFuture => scheduledDateTime.isAfter(DateTime.now());
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is Reminder &&
-        other.id == id &&
-        other.tankName == tankName &&
-        other.taskType == taskType &&
-        other.scheduledDate == scheduledDate &&
-        other.scheduledTime == scheduledTime &&
-        other.isCompleted == isCompleted;
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(
-      id,
-      tankName,
-      taskType,
-      scheduledDate,
-      scheduledTime,
-      isCompleted,
-    );
-  }
+  String toString() =>
+      'ReminderModel(id: $id, title: $title, type: ${type.label}, '
+      'scheduledAt: $scheduledDateTime, completed: $isCompleted)';
 }

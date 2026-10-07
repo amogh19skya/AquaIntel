@@ -1,4 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../models/reminder_model.dart';
+import '../services/reminder_service.dart';
+import '../services/notification_service.dart';
 import 'reminder_form.dart';
 
 class ReminderScreen extends StatefulWidget {
@@ -19,47 +23,8 @@ class _ReminderScreenState extends State<ReminderScreen>
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
-  // ─── Sample reminder data ───
-  final List<Map<String, dynamic>> _urgentTasks = [
-    {
-      'title': 'Fish Feed - Aqua Aura',
-      'dateTime': '12 Dec, 01:43 AM',
-      'icon': Icons.restaurant,
-      'iconBg': const Color(0xFFFF9800),
-      'completed': true,
-    },
-    {
-      'title': 'Water Change - 25%',
-      'dateTime': '12 Dec, 08:00 AM',
-      'icon': Icons.water_drop,
-      'iconBg': const Color(0xFF42A5F5),
-      'completed': false,
-    },
-  ];
-
-  final List<Map<String, dynamic>> _upcomingTasks = [
-    {
-      'title': 'Tank Cleaning - Aqua Aura',
-      'dateTime': '13 Dec, 01:42 AM',
-      'icon': Icons.cleaning_services,
-      'iconBg': const Color(0xFF66BB6A),
-      'completed': false,
-    },
-    {
-      'title': 'Filter Maintenance',
-      'dateTime': '14 Dec, 10:00 AM',
-      'icon': Icons.settings,
-      'iconBg': const Color(0xFFAB47BC),
-      'completed': false,
-    },
-    {
-      'title': 'Water Test - pH & Ammonia',
-      'dateTime': '15 Dec, 09:00 AM',
-      'icon': Icons.science,
-      'iconBg': const Color(0xFFEF5350),
-      'completed': false,
-    },
-  ];
+  final _reminderService = ReminderService();
+  final _notificationService = NotificationService();
 
   @override
   void initState() {
@@ -68,10 +33,7 @@ class _ReminderScreenState extends State<ReminderScreen>
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _fadeAnim = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOut,
-    );
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
   }
 
@@ -80,6 +42,138 @@ class _ReminderScreenState extends State<ReminderScreen>
     _animController.dispose();
     super.dispose();
   }
+
+  // ─── Type helpers ─────────────────────────────────────────
+
+  IconData _iconForType(ReminderType t) {
+    switch (t) {
+      case ReminderType.feeding:
+        return Icons.restaurant;
+      case ReminderType.waterChange:
+        return Icons.water_drop;
+      case ReminderType.filterCleaning:
+        return Icons.settings;
+      case ReminderType.tankCleaning:
+        return Icons.cleaning_services;
+      case ReminderType.medication:
+        return Icons.medication;
+      case ReminderType.maintenance:
+        return Icons.build;
+      case ReminderType.custom:
+        return Icons.edit_note;
+    }
+  }
+
+  Color _colorForType(ReminderType t) {
+    switch (t) {
+      case ReminderType.feeding:
+        return const Color(0xFFFF9800);
+      case ReminderType.waterChange:
+        return const Color(0xFF42A5F5);
+      case ReminderType.filterCleaning:
+        return const Color(0xFFAB47BC);
+      case ReminderType.tankCleaning:
+        return const Color(0xFF66BB6A);
+      case ReminderType.medication:
+        return const Color(0xFFEF5350);
+      case ReminderType.maintenance:
+        return const Color(0xFF26C6DA);
+      case ReminderType.custom:
+        return const Color(0xFFBDBDBD);
+    }
+  }
+
+  // ─── Actions ─────────────────────────────────────────────
+
+  Future<void> _toggleCompleted(ReminderModel reminder) async {
+    try {
+      final newValue = !reminder.isCompleted;
+      await _reminderService.toggleReminderCompleted(reminder.id!, newValue);
+      // Cancel notification if marking complete
+      if (newValue) {
+        await _notificationService.cancelNotification(reminder.notificationId);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _showSnack('Failed to update reminder');
+    }
+  }
+
+  Future<void> _deleteReminder(ReminderModel reminder) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Reminder',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Delete "${reminder.title}"?',
+          style: TextStyle(color: textBlue.withValues(alpha: 0.8)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: TextStyle(color: textBlue.withValues(alpha: 0.6))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF5350),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _notificationService.cancelNotification(reminder.notificationId);
+      await _reminderService.deleteReminder(reminder.id!);
+      if (!mounted) return;
+      _showSnack('Reminder deleted', isSuccess: true);
+    } catch (_) {
+      if (!mounted) return;
+      _showSnack('Failed to delete reminder');
+    }
+  }
+
+  Future<void> _openForm({ReminderModel? reminder}) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReminderFormScreen(existingReminder: reminder),
+      ),
+    );
+    if (result == true) {
+      // Stream auto-refreshes; nothing needed
+    }
+  }
+
+  void _showSnack(String msg, {bool isSuccess = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isSuccess
+            ? const Color(0xFF4CD964).withValues(alpha: 0.9)
+            : cardColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // BUILD
+  // ──────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -90,9 +184,7 @@ class _ReminderScreenState extends State<ReminderScreen>
           opacity: _fadeAnim,
           child: Stack(
             children: [
-              // ═══════════════════════════════════════
-              // TOP GRADIENT BACKGROUND
-              // ═══════════════════════════════════════
+              // Top gradient
               Positioned(
                 top: 0,
                 left: 0,
@@ -118,224 +210,126 @@ class _ReminderScreenState extends State<ReminderScreen>
                 ),
               ),
 
-              // ═══════════════════════════════════════
-              // MAIN SCROLLABLE CONTENT
-              // ═══════════════════════════════════════
-              CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // ─── APP BAR ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: cardColor.withValues(alpha: 0.6),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: primaryBlue.withValues(alpha: 0.15),
-                                  width: 1,
+              // Main content via Firestore stream
+              StreamBuilder<List<ReminderModel>>(
+                stream: _reminderService.getReminders(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return _buildError(snapshot.error.toString());
+                  }
+
+                  final reminders = snapshot.data ?? [];
+                  final now = DateTime.now();
+                  // Upcoming: not completed and in future (or today)
+                  final upcoming = reminders
+                      .where((r) =>
+                          !r.isCompleted &&
+                          r.scheduledDateTime.isAfter(now.subtract(const Duration(seconds: 1))))
+                      .toList();
+                  // Urgent: due within next 24 hours and not completed
+                  final urgent = upcoming
+                      .where((r) =>
+                          r.scheduledDateTime
+                              .isBefore(now.add(const Duration(hours: 24))))
+                      .toList();
+                  final normal = upcoming
+                      .where((r) => !urgent.contains(r))
+                      .toList();
+                  final completed = reminders.where((r) => r.isCompleted).toList();
+
+                  return CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      // App bar
+                      SliverToBoxAdapter(child: _buildAppBar()),
+
+                      // Header
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Maintenance',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
                                 ),
                               ),
-                              child: const Icon(
-                                Icons.arrow_back_ios_new,
-                                color: textBlue,
-                                size: 16,
+                              const Text(
+                                'Dashboard',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
+                                ),
                               ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Keep your aquarium healthy and thriving\nwith timely reminders.',
+                                style: TextStyle(
+                                  color: textBlue.withValues(alpha: 0.85),
+                                  fontSize: 14,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Loading indicator
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          snapshot.data == null)
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.all(40),
+                            child: Center(
+                              child: CircularProgressIndicator(color: primaryBlue),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: primaryBlue.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.water_drop,
-                              color: primaryBlue,
-                              size: 20,
-                            ),
+                        )
+                      else if (reminders.isEmpty)
+                        _buildEmptyState()
+                      else ...[
+                        // Urgent Tasks
+                        if (urgent.isNotEmpty) ...[
+                          _buildSectionHeader(
+                            'Urgent (${urgent.length})',
+                            const Color(0xFFFF9800),
                           ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'AquaIntel',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const Spacer(),
-                          _buildHeaderIcon(Icons.notifications_outlined),
+                          _buildReminderList(urgent),
                         ],
-                      ),
-                    ),
-                  ),
 
-                  // ─── HEADER SECTION ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Maintenance',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const Text(
-                            'Dashboard',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Keep your aquarium healthy and thriving\nwith timely reminders.',
-                            style: TextStyle(
-                              color: textBlue.withValues(alpha: 0.85),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              height: 1.5,
-                            ),
-                          ),
+                        // Upcoming Tasks
+                        if (normal.isNotEmpty) ...[
+                          _buildSectionHeader('Upcoming (${normal.length})', primaryBlue),
+                          _buildReminderList(normal),
                         ],
-                      ),
-                    ),
-                  ),
 
-                  // ─── URGENT TASKS SECTION ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 30, 20, 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF9800),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Urgent Tasks (${_urgentTasks.length})',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        // Completed
+                        if (completed.isNotEmpty) ...[
+                          _buildSectionHeader('Completed (${completed.length})',
+                              const Color(0xFF66BB6A)),
+                          _buildReminderList(completed),
                         ],
-                      ),
-                    ),
-                  ),
+                      ],
 
-                  // ─── URGENT TASKS LIST ───
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _buildTaskCard(
-                              _urgentTasks[index],
-                              isUrgent: true,
-                              onToggle: () {
-                                setState(() {
-                                  _urgentTasks[index]['completed'] =
-                                      !_urgentTasks[index]['completed'];
-                                });
-                              },
-                            ),
-                          );
-                        },
-                        childCount: _urgentTasks.length,
-                      ),
-                    ),
-                  ),
-
-                  // ─── UPCOMING TASKS SECTION ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: primaryBlue,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Upcoming Tasks (${_upcomingTasks.length})',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // ─── UPCOMING TASKS LIST ───
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _buildTaskCard(
-                              _upcomingTasks[index],
-                              isUrgent: false,
-                              onToggle: () {
-                                setState(() {
-                                  _upcomingTasks[index]['completed'] =
-                                      !_upcomingTasks[index]['completed'];
-                                });
-                              },
-                            ),
-                          );
-                        },
-                        childCount: _upcomingTasks.length,
-                      ),
-                    ),
-                  ),
-                ],
+                      const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                    ],
+                  );
+                },
               ),
             ],
           ),
         ),
       ),
 
-      // ═══════════════════════════════════════
-      // FLOATING ACTION BUTTON
-      // ═══════════════════════════════════════
+      // FAB
       floatingActionButton: Container(
         width: 56,
         height: 56,
@@ -344,10 +338,7 @@ class _ReminderScreenState extends State<ReminderScreen>
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF29A8DF),
-              Color(0xFF1B8FC4),
-            ],
+            colors: [Color(0xFF29A8DF), Color(0xFF1B8FC4)],
           ),
           boxShadow: [
             BoxShadow(
@@ -358,397 +349,375 @@ class _ReminderScreenState extends State<ReminderScreen>
           ],
         ),
         child: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ReminderFormScreen(),
-              ),
-            );
-          },
+          onPressed: () => _openForm(),
           backgroundColor: Colors.transparent,
           elevation: 0,
           highlightElevation: 0,
-          child: const Icon(
-            Icons.add,
-            color: Colors.white,
-            size: 28,
-          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
         ),
       ),
     );
   }
 
-  // ══════════════════════════════════════════════
-  // HEADER ICON BUTTON
-  // ══════════════════════════════════════════════
-  Widget _buildHeaderIcon(IconData icon) {
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: cardColor.withValues(alpha: 0.6),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: primaryBlue.withValues(alpha: 0.15),
-          width: 1,
-        ),
-      ),
-      child: Icon(
-        icon,
-        color: textBlue,
-        size: 20,
-      ),
-    );
-  }
+  // ─── App Bar ─────────────────────────────────────────────
 
-  // ══════════════════════════════════════════════
-  // TASK CARD
-  // ══════════════════════════════════════════════
-  Widget _buildTaskCard(
-    Map<String, dynamic> task, {
-    required bool isUrgent,
-    required VoidCallback onToggle,
-  }) {
-    final bool completed = task['completed'] as bool;
-    final Color iconBg = task['iconBg'] as Color;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: completed
-            ? cardColor.withValues(alpha: 0.5)
-            : cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isUrgent && !completed
-              ? const Color(0xFFFF9800).withValues(alpha: 0.2)
-              : primaryBlue.withValues(alpha: 0.1),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
         children: [
-          // ─── Task Icon ───
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: completed
-                  ? iconBg.withValues(alpha: 0.1)
-                  : iconBg.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              task['icon'] as IconData,
-              color: completed
-                  ? iconBg.withValues(alpha: 0.5)
-                  : iconBg,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 14),
-
-          // ─── Task Details ───
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task['title'] as String,
-                  style: TextStyle(
-                    color: completed
-                        ? Colors.white.withValues(alpha: 0.5)
-                        : Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    decoration: completed
-                        ? TextDecoration.lineThrough
-                        : TextDecoration.none,
-                    decorationColor: textBlue.withValues(alpha: 0.5),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      color: textBlue.withValues(alpha: 0.6),
-                      size: 13,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      task['dateTime'] as String,
-                      style: TextStyle(
-                        color: textBlue.withValues(alpha: 0.7),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // ─── Completion Toggle ───
           GestureDetector(
-            onTap: onToggle,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: 30,
-              height: 30,
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
+                color: cardColor.withValues(alpha: 0.6),
                 shape: BoxShape.circle,
-                color: completed
-                    ? primaryBlue
-                    : Colors.transparent,
                 border: Border.all(
-                  color: completed
-                      ? primaryBlue
-                      : textBlue.withValues(alpha: 0.4),
-                  width: 2,
+                  color: primaryBlue.withValues(alpha: 0.15),
+                  width: 1,
                 ),
-                boxShadow: completed
-                    ? [
-                        BoxShadow(
-                          color: primaryBlue.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : [],
               ),
-              child: completed
-                  ? const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 18,
-                    )
-                  : null,
+              child: const Icon(Icons.arrow_back_ios_new, color: textBlue, size: 16),
             ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: primaryBlue.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.water_drop, color: primaryBlue, size: 20),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'AquaIntel',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const Spacer(),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: cardColor.withValues(alpha: 0.6),
+              shape: BoxShape.circle,
+              border: Border.all(color: primaryBlue.withValues(alpha: 0.15), width: 1),
+            ),
+            child: const Icon(Icons.notifications_outlined, color: textBlue, size: 20),
           ),
         ],
       ),
     );
   }
 
-  // ══════════════════════════════════════════════
-  // ADD REMINDER BOTTOM SHEET
-  // ══════════════════════════════════════════════
-  void _showAddReminderSheet(BuildContext context) {
-    final titleController = TextEditingController();
-    String selectedCategory = 'Feeding';
+  // ─── Section Header ──────────────────────────────────────
 
-    final categories = [
-      {'label': 'Feeding', 'icon': Icons.restaurant, 'color': const Color(0xFFFF9800)},
-      {'label': 'Cleaning', 'icon': Icons.cleaning_services, 'color': const Color(0xFF66BB6A)},
-      {'label': 'Water Change', 'icon': Icons.water_drop, 'color': const Color(0xFF42A5F5)},
-      {'label': 'Filter', 'icon': Icons.settings, 'color': const Color(0xFFAB47BC)},
-      {'label': 'Testing', 'icon': Icons.science, 'color': const Color(0xFFEF5350)},
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Container(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
+  SliverToBoxAdapter _buildSectionHeader(String label, Color color) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration:
+                  BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
-              decoration: const BoxDecoration(
-                color: Color(0xFF142F45),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Reminder List ───────────────────────────────────────
+
+  SliverPadding _buildReminderList(List<ReminderModel> reminders) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildTaskCard(reminders[index]),
+            );
+          },
+          childCount: reminders.length,
+        ),
+      ),
+    );
+  }
+
+  // ─── Task Card ───────────────────────────────────────────
+
+  Widget _buildTaskCard(ReminderModel reminder) {
+    final completed = reminder.isCompleted;
+    final color = _colorForType(reminder.type);
+    final icon = _iconForType(reminder.type);
+    final isUrgent = !completed &&
+        reminder.scheduledDateTime
+            .isBefore(DateTime.now().add(const Duration(hours: 24)));
+
+    return Dismissible(
+      key: ValueKey(reminder.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEF5350).withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Icon(Icons.delete_outline, color: Colors.white, size: 26),
+      ),
+      confirmDismiss: (_) async {
+        await _deleteReminder(reminder);
+        return false; // Stream update handles UI refresh
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: completed ? cardColor.withValues(alpha: 0.5) : cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isUrgent && !completed
+                ? const Color(0xFFFF9800).withValues(alpha: 0.25)
+                : primaryBlue.withValues(alpha: 0.1),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: completed
+                    ? color.withValues(alpha: 0.1)
+                    : color.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ─── Handle ───
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: textBlue.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+              child: Icon(
+                icon,
+                color: completed ? color.withValues(alpha: 0.4) : color,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
 
-                    // ─── Title ───
-                    const Text(
-                      'New Reminder',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
+            // Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    reminder.title,
+                    style: TextStyle(
+                      color: completed
+                          ? Colors.white.withValues(alpha: 0.5)
+                          : Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      decoration: completed
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
+                      decorationColor: textBlue.withValues(alpha: 0.5),
                     ),
-                    const SizedBox(height: 20),
-
-                    // ─── Task Name Field ───
-                    TextField(
-                      controller: titleController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Task name...',
-                        hintStyle: TextStyle(
-                          color: textBlue.withValues(alpha: 0.5),
-                        ),
-                        filled: true,
-                        fillColor: cardColor,
-                        prefixIcon: Icon(
-                          Icons.edit_outlined,
-                          color: primaryBlue.withValues(alpha: 0.7),
-                          size: 20,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: primaryBlue,
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-
-                    // ─── Category Selection ───
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  if (reminder.aquariumName.isNotEmpty)
                     Text(
-                      'Category',
+                      reminder.aquariumName,
                       style: TextStyle(
-                        color: textBlue.withValues(alpha: 0.8),
-                        fontSize: 14,
+                        color: primaryBlue.withValues(alpha: 0.7),
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: categories.map((cat) {
-                        final isSelected =
-                            selectedCategory == cat['label'];
-                        return GestureDetector(
-                          onTap: () {
-                            setSheetState(() {
-                              selectedCategory =
-                                  cat['label'] as String;
-                            });
-                          },
-                          child: AnimatedContainer(
-                            duration:
-                                const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? (cat['color'] as Color)
-                                      .withValues(alpha: 0.2)
-                                  : cardColor,
-                              borderRadius:
-                                  BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isSelected
-                                    ? (cat['color'] as Color)
-                                        .withValues(alpha: 0.5)
-                                    : primaryBlue
-                                        .withValues(alpha: 0.1),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  cat['icon'] as IconData,
-                                  color: cat['color'] as Color,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  cat['label'] as String,
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : textBlue,
-                                    fontSize: 13,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ─── Save Button ───
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (titleController.text.isNotEmpty) {
-                            Navigator.pop(context);
-                            // TODO: Save reminder
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryBlue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Save Reminder',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        color: textBlue.withValues(alpha: 0.6),
+                        size: 13,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        DateFormat('MMM dd, hh:mm a')
+                            .format(reminder.scheduledDateTime),
+                        style: TextStyle(
+                          color: textBlue.withValues(alpha: 0.7),
+                          fontSize: 12,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Edit button
+            if (!completed)
+              GestureDetector(
+                onTap: () => _openForm(reminder: reminder),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.edit_outlined,
+                    color: primaryBlue.withValues(alpha: 0.8),
+                    size: 16,
+                  ),
                 ),
               ),
-            );
-          },
-        );
-      },
+
+            // Complete toggle
+            GestureDetector(
+              onTap: () => _toggleCompleted(reminder),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: completed ? primaryBlue : Colors.transparent,
+                  border: Border.all(
+                    color: completed
+                        ? primaryBlue
+                        : textBlue.withValues(alpha: 0.4),
+                    width: 2,
+                  ),
+                  boxShadow: completed
+                      ? [
+                          BoxShadow(
+                            color: primaryBlue.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: completed
+                    ? const Icon(Icons.check, color: Colors.white, size: 18)
+                    : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Empty State ─────────────────────────────────────────
+
+  SliverToBoxAdapter _buildEmptyState() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+        child: Column(
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: primaryBlue.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.alarm_add_outlined,
+                color: primaryBlue.withValues(alpha: 0.6),
+                size: 40,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'No reminders yet',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap the + button to create your\nfirst aquarium reminder.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textBlue.withValues(alpha: 0.7),
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Error State ─────────────────────────────────────────
+
+  Widget _buildError(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Color(0xFFEF5350), size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'Failed to load reminders',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please check your internet connection.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: textBlue.withValues(alpha: 0.7), fontSize: 14),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

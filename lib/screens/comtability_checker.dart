@@ -1,124 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
-// ═══════════════════════════════════════════════════════════════════
-// MOCK FISH DATA
-// ═══════════════════════════════════════════════════════════════════
-
-class FishData {
-  final String name;
-  final String scientificName;
-  final String temperament;
-  final String size;
-  final String temperature;
-  final String ph;
-  final String tankSize;
-  final IconData icon;
-  final Color accentColor;
-
-  const FishData({
-    required this.name,
-    required this.scientificName,
-    required this.temperament,
-    required this.size,
-    required this.temperature,
-    required this.ph,
-    required this.tankSize,
-    required this.icon,
-    required this.accentColor,
-  });
-}
-
-const List<FishData> mockFishList = [
-  FishData(
-    name: 'Betta',
-    scientificName: 'Betta splendens',
-    temperament: 'Semi-aggressive',
-    size: '6–8 cm',
-    temperature: '24–30°C',
-    ph: '6.5–7.5',
-    tankSize: '20L+',
-    icon: Icons.waves,
-    accentColor: Color(0xFFE53935),
-  ),
-  FishData(
-    name: 'Neon Tetra',
-    scientificName: 'Paracheirodon innesi',
-    temperament: 'Peaceful',
-    size: '3–4 cm',
-    temperature: '20–26°C',
-    ph: '6.0–7.0',
-    tankSize: '40L+',
-    icon: Icons.bubble_chart,
-    accentColor: Color(0xFF29B6F6),
-  ),
-  FishData(
-    name: 'Guppy',
-    scientificName: 'Poecilia reticulata',
-    temperament: 'Peaceful',
-    size: '3–6 cm',
-    temperature: '22–28°C',
-    ph: '6.8–7.8',
-    tankSize: '40L+',
-    icon: Icons.water,
-    accentColor: Color(0xFF66BB6A),
-  ),
-  FishData(
-    name: 'Goldfish',
-    scientificName: 'Carassius auratus',
-    temperament: 'Peaceful',
-    size: '10–30 cm',
-    temperature: '18–24°C',
-    ph: '7.0–8.4',
-    tankSize: '75L+',
-    icon: Icons.spa,
-    accentColor: Color(0xFFFF9800),
-  ),
-  FishData(
-    name: 'Angelfish',
-    scientificName: 'Pterophyllum scalare',
-    temperament: 'Semi-aggressive',
-    size: '12–15 cm',
-    temperature: '24–30°C',
-    ph: '6.0–7.5',
-    tankSize: '150L+',
-    icon: Icons.change_history,
-    accentColor: Color(0xFFAB47BC),
-  ),
-  FishData(
-    name: 'Corydoras',
-    scientificName: 'Corydoras paleatus',
-    temperament: 'Peaceful',
-    size: '5–7 cm',
-    temperature: '22–26°C',
-    ph: '6.0–7.5',
-    tankSize: '40L+',
-    icon: Icons.circle,
-    accentColor: Color(0xFF8D6E63),
-  ),
-  FishData(
-    name: 'Oscar',
-    scientificName: 'Astronotus ocellatus',
-    temperament: 'Aggressive',
-    size: '25–35 cm',
-    temperature: '22–28°C',
-    ph: '6.0–8.0',
-    tankSize: '200L+',
-    icon: Icons.shield,
-    accentColor: Color(0xFFEF5350),
-  ),
-  FishData(
-    name: 'Platy',
-    scientificName: 'Xiphophorus maculatus',
-    temperament: 'Peaceful',
-    size: '4–7 cm',
-    temperature: '20–28°C',
-    ph: '7.0–8.3',
-    tankSize: '40L+',
-    icon: Icons.favorite,
-    accentColor: Color(0xFFEC407A),
-  ),
-];
+import '../models/fish.dart';
+import '../models/compatibility_result.dart';
+import '../services/fish_service.dart';
+import '../services/compatibility_service.dart';
+import '../widgets/compatibility_header.dart';
 
 // ═══════════════════════════════════════════════════════════════════
 // COMPATIBILITY CHECKER SCREEN
@@ -142,11 +29,25 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
   static const Color primaryBlue = Color(0xFF29A8DF);
   static const Color textBlue = Color(0xFF70A9CC);
 
-  // ─── State ───
-  FishData? _firstFish;
-  FishData? _secondFish;
-  bool _showResults = false;
+  // ─── Services ───
+  final FishService _fishService = FishService();
+  final CompatibilityService _compatibilityService = CompatibilityService();
 
+  // ─── State: fish list ───
+  List<Fish> _fishList = [];
+  bool _isLoadingFish = true;
+  String? _fishLoadError;
+
+  // ─── State: selection ───
+  Fish? _firstFish;
+  Fish? _secondFish;
+
+  // ─── State: results ───
+  bool _showResults = false;
+  bool _isCheckingCompatibility = false;
+  CompatibilityResult? _result;
+
+  // ─── Animations ───
   late AnimationController _fadeController;
   late Animation<double> _fadeAnim;
 
@@ -160,6 +61,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
   @override
   void initState() {
     super.initState();
+
     // Page entrance fade
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -180,7 +82,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
       parent: _resultController,
       curve: Curves.easeOut,
     );
-    _scoreAnim = Tween<double>(begin: 0, end: 82).animate(
+    _scoreAnim = Tween<double>(begin: 0, end: 100).animate(
       CurvedAnimation(
         parent: _resultController,
         curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
@@ -195,6 +97,9 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
     _swapRotation = Tween<double>(begin: 0, end: math.pi).animate(
       CurvedAnimation(parent: _swapController, curve: Curves.easeInOut),
     );
+
+    // Load fish from Firestore
+    _loadFish();
   }
 
   @override
@@ -205,6 +110,33 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
     super.dispose();
   }
 
+  // ─── Fish loading ─────────────────────────────────────────────────────────
+
+  Future<void> _loadFish() async {
+    setState(() {
+      _isLoadingFish = true;
+      _fishLoadError = null;
+    });
+    try {
+      final list = await _fishService.getFishList();
+      if (mounted) {
+        setState(() {
+          _fishList = list;
+          _isLoadingFish = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _fishLoadError = e.toString().replaceFirst('Exception: ', '');
+          _isLoadingFish = false;
+        });
+      }
+    }
+  }
+
+  // ─── Fish selection / swap ────────────────────────────────────────────────
+
   void _swapFish() {
     if (_firstFish == null && _secondFish == null) return;
     setState(() {
@@ -212,46 +144,20 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
       _firstFish = _secondFish;
       _secondFish = temp;
       _showResults = false;
+      _result = null;
     });
     _swapController.forward(from: 0);
     _resultController.reset();
   }
 
-  void _checkCompatibility() {
-    if (_firstFish == null || _secondFish == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please select both fish first'),
-          backgroundColor: cardColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      return;
-    }
-    setState(() {
-      _showResults = true;
-    });
-    _resultController.forward(from: 0);
-  }
-
-  void _resetSelection() {
-    setState(() {
-      _firstFish = null;
-      _secondFish = null;
-      _showResults = false;
-    });
-    _resultController.reset();
-  }
-
   Future<void> _selectFish(bool isFirst) async {
-    final selected = await showModalBottomSheet<FishData>(
+    if (_isLoadingFish) return;
+    final selected = await showModalBottomSheet<Fish>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _FishSelectionSheet(
+        fishList: _fishList,
         selectedFish: isFirst ? _firstFish : _secondFish,
         otherFish: isFirst ? _secondFish : _firstFish,
       ),
@@ -264,10 +170,87 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
           _secondFish = selected;
         }
         _showResults = false;
+        _result = null;
       });
       _resultController.reset();
     }
   }
+
+  // ─── Compatibility check ──────────────────────────────────────────────────
+
+  Future<void> _checkCompatibility() async {
+    if (_firstFish == null || _secondFish == null) {
+      _showSnackBar('Please select both fish first');
+      return;
+    }
+    if (_firstFish!.id == _secondFish!.id) {
+      _showSnackBar('Please select two different fish species');
+      return;
+    }
+    if (_isCheckingCompatibility) return;
+
+    setState(() {
+      _isCheckingCompatibility = true;
+    });
+
+    try {
+      final result = await _compatibilityService.checkCompatibility(
+        _firstFish!,
+        _secondFish!,
+      );
+
+      if (!mounted) return;
+
+      // Drive score animation from 0 → actual score
+      _scoreAnim = Tween<double>(begin: 0, end: result.score.toDouble()).animate(
+        CurvedAnimation(
+          parent: _resultController,
+          curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+        ),
+      );
+
+      setState(() {
+        _result = result;
+        _showResults = true;
+        _isCheckingCompatibility = false;
+      });
+      _resultController.forward(from: 0);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isCheckingCompatibility = false;
+      });
+      _showSnackBar(
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
+
+  void _resetSelection() {
+    setState(() {
+      _firstFish = null;
+      _secondFish = null;
+      _showResults = false;
+      _result = null;
+    });
+    _resultController.reset();
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: cardColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -315,49 +298,59 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                   // ─── APP BAR ───
                   SliverToBoxAdapter(child: _buildAppBar()),
 
-                  // ─── HEADER ───
-                  SliverToBoxAdapter(child: _buildHeader()),
+                  // ─── HEADER (from lib/widgets/compatibility_header.dart) ───
+                  const SliverToBoxAdapter(child: CompatibilityHeader()),
 
-                  // ─── FIRST FISH CARD ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: _buildFishCard(
-                        label: 'First Fish',
-                        fish: _firstFish,
-                        onTap: () => _selectFish(true),
-                        iconLabel: '1',
+                  // ─── FISH LOADING / ERROR STATE ───
+                  if (_isLoadingFish)
+                    const SliverToBoxAdapter(child: _FishLoadingIndicator())
+                  else if (_fishLoadError != null)
+                    SliverToBoxAdapter(
+                      child: _FishErrorView(
+                        message: _fishLoadError!,
+                        onRetry: _loadFish,
+                      ),
+                    )
+                  else ...[
+                    // ─── FIRST FISH CARD ───
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                        child: _buildFishCard(
+                          label: 'First Fish',
+                          fish: _firstFish,
+                          onTap: () => _selectFish(true),
+                          iconLabel: '1',
+                        ),
                       ),
                     ),
-                  ),
 
-                  // ─── SWAP BUTTON ───
-                  SliverToBoxAdapter(
-                    child: _buildSwapButton(),
-                  ),
+                    // ─── SWAP BUTTON ───
+                    SliverToBoxAdapter(child: _buildSwapButton()),
 
-                  // ─── SECOND FISH CARD ───
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                      child: _buildFishCard(
-                        label: 'Second Fish',
-                        fish: _secondFish,
-                        onTap: () => _selectFish(false),
-                        iconLabel: '2',
+                    // ─── SECOND FISH CARD ───
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                        child: _buildFishCard(
+                          label: 'Second Fish',
+                          fish: _secondFish,
+                          onTap: () => _selectFish(false),
+                          iconLabel: '2',
+                        ),
                       ),
                     ),
-                  ),
 
-                  // ─── CHECK BUTTON ───
-                  SliverToBoxAdapter(child: _buildCheckButton()),
+                    // ─── CHECK BUTTON ───
+                    SliverToBoxAdapter(child: _buildCheckButton()),
 
-                  // ─── RESULTS SECTION ───
-                  if (_showResults) ...[
-                    SliverToBoxAdapter(child: _buildResultCard()),
-                    SliverToBoxAdapter(child: _buildCompatibilityOverview()),
-                    SliverToBoxAdapter(child: _buildRecommendationCard()),
-                    SliverToBoxAdapter(child: _buildCheckAnotherButton()),
+                    // ─── RESULTS SECTION ───
+                    if (_showResults && _result != null) ...[
+                      SliverToBoxAdapter(child: _buildResultCard()),
+                      SliverToBoxAdapter(child: _buildCompatibilityOverview()),
+                      SliverToBoxAdapter(child: _buildRecommendationCard()),
+                      SliverToBoxAdapter(child: _buildCheckAnotherButton()),
+                    ],
                   ],
 
                   // Bottom spacing
@@ -491,91 +484,11 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
   }
 
   // ══════════════════════════════════════════════
-  // HEADER SECTION
-  // ══════════════════════════════════════════════
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Check Fish\nCompatibility',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.5,
-                        height: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Subtle aquarium visual element
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      primaryBlue.withValues(alpha: 0.2),
-                      primaryBlue.withValues(alpha: 0.05),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: primaryBlue.withValues(alpha: 0.15),
-                    width: 1,
-                  ),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Icon(
-                      Icons.water,
-                      color: primaryBlue.withValues(alpha: 0.3),
-                      size: 40,
-                    ),
-                    const Icon(
-                      Icons.set_meal_rounded,
-                      color: primaryBlue,
-                      size: 28,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Find out if two fish can live together in the same aquarium.',
-            style: TextStyle(
-              color: textBlue.withValues(alpha: 0.85),
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════
   // FISH SELECTION CARD
   // ══════════════════════════════════════════════
   Widget _buildFishCard({
     required String label,
-    required FishData? fish,
+    required Fish? fish,
     required VoidCallback onTap,
     required String iconLabel,
   }) {
@@ -621,7 +534,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isSelected
-                      ? fish!.accentColor.withValues(alpha: 0.3)
+                      ? fish.accentColor.withValues(alpha: 0.3)
                       : primaryBlue.withValues(alpha: 0.1),
                   width: 1,
                 ),
@@ -644,7 +557,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Label
+                  // Label badge
                   Row(
                     children: [
                       Container(
@@ -759,7 +672,8 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
   // CHECK COMPATIBILITY BUTTON
   // ══════════════════════════════════════════════
   Widget _buildCheckButton() {
-    final bool canCheck = _firstFish != null && _secondFish != null;
+    final bool canCheck =
+        _firstFish != null && _secondFish != null && !_isCheckingCompatibility;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
@@ -792,30 +706,41 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                   ]
                 : null,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.fact_check_outlined,
-                color: canCheck
-                    ? Colors.white
-                    : textBlue.withValues(alpha: 0.4),
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Check Compatibility',
-                style: TextStyle(
-                  color: canCheck
-                      ? Colors.white
-                      : textBlue.withValues(alpha: 0.4),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
+          child: _isCheckingCompatibility
+              ? const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.fact_check_outlined,
+                      color: canCheck
+                          ? Colors.white
+                          : textBlue.withValues(alpha: 0.4),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Check Compatibility',
+                      style: TextStyle(
+                        color: canCheck
+                            ? Colors.white
+                            : textBlue.withValues(alpha: 0.4),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -825,6 +750,10 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
   // RESULT CARD  — Score & Status
   // ══════════════════════════════════════════════
   Widget _buildResultCard() {
+    final result = _result!;
+    final statusColor = _statusBadgeColor(result.status);
+    final statusIcon = _statusBadgeIcon(result.status);
+
     return FadeTransition(
       opacity: _resultFadeAnim,
       child: Padding(
@@ -861,7 +790,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
               ),
               const SizedBox(height: 20),
 
-              // Circular progress indicator with score
+              // Circular progress indicator with animated score
               AnimatedBuilder(
                 animation: _scoreAnim,
                 builder: (context, child) {
@@ -924,33 +853,33 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
               ),
               const SizedBox(height: 18),
 
-              // Status badge
+              // Status badge — dynamic from result
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF66BB6A).withValues(alpha: 0.15),
+                  color: statusColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: const Color(0xFF66BB6A).withValues(alpha: 0.3),
+                    color: statusColor.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.check_circle_rounded,
-                      color: Color(0xFF66BB6A),
+                      statusIcon,
+                      color: statusColor,
                       size: 16,
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Text(
-                      'Highly Compatible',
+                      result.status,
                       style: TextStyle(
-                        color: Color(0xFF66BB6A),
+                        color: statusColor,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -971,10 +900,25 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
     return const Color(0xFFEF5350);
   }
 
+  Color _statusBadgeColor(String status) {
+    if (status == 'Highly Compatible') return const Color(0xFF66BB6A);
+    if (status == 'Moderately Compatible') return const Color(0xFF29B6F6);
+    if (status == 'Low Compatibility') return const Color(0xFFFF9800);
+    return const Color(0xFFEF5350);
+  }
+
+  IconData _statusBadgeIcon(String status) {
+    if (status == 'Highly Compatible') return Icons.check_circle_rounded;
+    if (status == 'Moderately Compatible') return Icons.info_rounded;
+    if (status == 'Low Compatibility') return Icons.warning_amber_rounded;
+    return Icons.cancel_rounded;
+  }
+
   // ══════════════════════════════════════════════
   // COMPATIBILITY OVERVIEW  — Detailed rows
   // ══════════════════════════════════════════════
   Widget _buildCompatibilityOverview() {
+    final result = _result!;
     return FadeTransition(
       opacity: _resultFadeAnim,
       child: Padding(
@@ -1018,45 +962,31 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
               ),
               const SizedBox(height: 16),
               // Divider
-              Container(
-                height: 1,
-                color: primaryBlue.withValues(alpha: 0.08),
-              ),
+              Container(height: 1, color: primaryBlue.withValues(alpha: 0.08)),
               const SizedBox(height: 12),
               _buildOverviewRow(
                 icon: Icons.thermostat_outlined,
                 label: 'Water Temperature',
-                status: 'Compatible',
-                statusColor: const Color(0xFF66BB6A),
-                statusIcon: Icons.check_circle_outline,
+                status: result.temperatureStatus,
+                message: result.temperatureMessage,
               ),
               _buildOverviewRow(
                 icon: Icons.science_outlined,
                 label: 'pH Level',
-                status: 'Compatible',
-                statusColor: const Color(0xFF66BB6A),
-                statusIcon: Icons.check_circle_outline,
+                status: result.phStatus,
+                message: result.phMessage,
               ),
               _buildOverviewRow(
                 icon: Icons.pets_outlined,
                 label: 'Temperament',
-                status: 'Caution',
-                statusColor: const Color(0xFFFF9800),
-                statusIcon: Icons.warning_amber_rounded,
-              ),
-              _buildOverviewRow(
-                icon: Icons.straighten_outlined,
-                label: 'Size',
-                status: 'Compatible',
-                statusColor: const Color(0xFF66BB6A),
-                statusIcon: Icons.check_circle_outline,
+                status: result.temperamentStatus,
+                message: result.temperamentMessage,
               ),
               _buildOverviewRow(
                 icon: Icons.water_damage_outlined,
                 label: 'Tank Requirements',
-                status: 'Compatible',
-                statusColor: const Color(0xFF66BB6A),
-                statusIcon: Icons.check_circle_outline,
+                status: result.tankSizeStatus,
+                message: result.tankSizeMessage,
                 isLast: true,
               ),
             ],
@@ -1070,81 +1000,109 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
     required IconData icon,
     required String label,
     required String status,
-    required Color statusColor,
-    required IconData statusIcon,
+    required String message,
     bool isLast = false,
   }) {
+    final color = _factorStatusColor(status);
+    final statusIcon = _factorStatusIcon(status);
+
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: primaryBlue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  icon,
-                  color: textBlue,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, color: textBlue, size: 18),
                   ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(statusIcon, color: statusColor, size: 14),
-                    const SizedBox(width: 4),
-                    Text(
-                      status,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, color: color, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          status,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
+              // Detail message
+              if (message.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.only(left: 46),
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: textBlue.withValues(alpha: 0.7),
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
         if (!isLast)
-          Container(
-            height: 1,
-            color: primaryBlue.withValues(alpha: 0.06),
-          ),
+          Container(height: 1, color: primaryBlue.withValues(alpha: 0.06)),
       ],
     );
+  }
+
+  Color _factorStatusColor(String status) {
+    if (status == 'Compatible') return const Color(0xFF66BB6A);
+    if (status == 'Caution') return const Color(0xFFFF9800);
+    return const Color(0xFFEF5350);
+  }
+
+  IconData _factorStatusIcon(String status) {
+    if (status == 'Compatible') return Icons.check_circle_outline;
+    if (status == 'Caution') return Icons.warning_amber_rounded;
+    return Icons.cancel_outlined;
   }
 
   // ══════════════════════════════════════════════
   // RECOMMENDATION CARD
   // ══════════════════════════════════════════════
   Widget _buildRecommendationCard() {
+    final result = _result!;
     return FadeTransition(
       opacity: _resultFadeAnim,
       child: Padding(
@@ -1203,9 +1161,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
               ),
               const SizedBox(height: 14),
               Text(
-                'These fish have similar water requirements and can generally '
-                'be kept together. Monitor temperament during the first few '
-                'days and provide sufficient hiding spots for both species.',
+                result.recommendation,
                 style: TextStyle(
                   color: textBlue.withValues(alpha: 0.9),
                   fontSize: 14,
@@ -1233,11 +1189,11 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                       size: 18,
                     ),
                     const SizedBox(width: 10),
-                    Expanded(
+                    const Expanded(
                       child: Text(
                         'Tip: Start with a larger tank to reduce territorial stress.',
                         style: TextStyle(
-                          color: textBlue.withValues(alpha: 0.8),
+                          color: textBlue,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                           height: 1.4,
@@ -1300,14 +1256,144 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// LOADING INDICATOR (shown while fish list loads from Firestore)
+// ═══════════════════════════════════════════════════════════════════
+
+class _FishLoadingIndicator extends StatelessWidget {
+  static const Color primaryBlue = Color(0xFF29A8DF);
+  static const Color cardColor = Color(0xFF1C4667);
+  static const Color textBlue = Color(0xFF70A9CC);
+
+  const _FishLoadingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: primaryBlue.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                color: primaryBlue,
+                strokeWidth: 3,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading fish data…',
+              style: TextStyle(
+                color: textBlue.withValues(alpha: 0.7),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ERROR VIEW (shown when Firestore fails to load fish)
+// ═══════════════════════════════════════════════════════════════════
+
+class _FishErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  static const Color primaryBlue = Color(0xFF29A8DF);
+  static const Color cardColor = Color(0xFF1C4667);
+  static const Color textBlue = Color(0xFF70A9CC);
+
+  const _FishErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: const Color(0xFFEF5350).withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.wifi_off_rounded,
+              color: Color(0xFFEF5350),
+              size: 36,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textBlue.withValues(alpha: 0.8),
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 18),
+            GestureDetector(
+              onTap: onRetry,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: primaryBlue.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: primaryBlue.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: const Text(
+                  'Retry',
+                  style: TextStyle(
+                    color: primaryBlue,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // FISH SELECTION BOTTOM SHEET
 // ═══════════════════════════════════════════════════════════════════
 
 class _FishSelectionSheet extends StatefulWidget {
-  final FishData? selectedFish;
-  final FishData? otherFish;
+  final List<Fish> fishList;
+  final Fish? selectedFish;
+  final Fish? otherFish;
 
   const _FishSelectionSheet({
+    required this.fishList,
     this.selectedFish,
     this.otherFish,
   });
@@ -1332,9 +1418,9 @@ class _FishSelectionSheetState extends State<_FishSelectionSheet> {
     super.dispose();
   }
 
-  List<FishData> get _filteredFish {
-    if (_searchQuery.isEmpty) return mockFishList;
-    return mockFishList.where((fish) {
+  List<Fish> get _filteredFish {
+    if (_searchQuery.isEmpty) return widget.fishList;
+    return widget.fishList.where((fish) {
       return fish.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           fish.scientificName
               .toLowerCase()
@@ -1508,157 +1594,171 @@ class _FishSelectionSheetState extends State<_FishSelectionSheet> {
 
           // ─── Fish list ───
           Expanded(
-            child: ListView.builder(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-              itemCount: _filteredFish.length,
-              itemBuilder: (context, index) {
-                final fish = _filteredFish[index];
-                final bool isSelected = widget.selectedFish?.name == fish.name;
-                final bool isOtherSelected =
-                    widget.otherFish?.name == fish.name;
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: GestureDetector(
-                    onTap: isOtherSelected
-                        ? null
-                        : () => Navigator.pop(context, fish),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? primaryBlue.withValues(alpha: 0.12)
-                            : cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected
-                              ? primaryBlue.withValues(alpha: 0.4)
-                              : isOtherSelected
-                                  ? textBlue.withValues(alpha: 0.15)
-                                  : primaryBlue.withValues(alpha: 0.08),
-                          width: isSelected ? 1.5 : 1,
-                        ),
+            child: widget.fishList.isEmpty
+                ? Center(
+                    child: Text(
+                      'No fish data available.',
+                      style: TextStyle(
+                        color: textBlue.withValues(alpha: 0.5),
+                        fontSize: 14,
                       ),
-                      child: Opacity(
-                        opacity: isOtherSelected ? 0.4 : 1.0,
-                        child: Row(
-                          children: [
-                            // Fish icon
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: fish.accentColor
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: fish.accentColor
-                                      .withValues(alpha: 0.25),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Icon(
-                                fish.icon,
-                                color: fish.accentColor,
-                                size: 24,
+                    ),
+                  )
+                : ListView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                    itemCount: _filteredFish.length,
+                    itemBuilder: (context, index) {
+                      final fish = _filteredFish[index];
+                      final bool isSelected =
+                          widget.selectedFish?.id == fish.id;
+                      final bool isOtherSelected =
+                          widget.otherFish?.id == fish.id;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: GestureDetector(
+                          onTap: isOtherSelected
+                              ? null
+                              : () => Navigator.pop(context, fish),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? primaryBlue.withValues(alpha: 0.12)
+                                  : cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? primaryBlue.withValues(alpha: 0.4)
+                                    : isOtherSelected
+                                        ? textBlue.withValues(alpha: 0.15)
+                                        : primaryBlue.withValues(alpha: 0.08),
+                                width: isSelected ? 1.5 : 1,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            // Fish info
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Opacity(
+                              opacity: isOtherSelected ? 0.4 : 1.0,
+                              child: Row(
                                 children: [
-                                  Text(
-                                    fish.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
+                                  // Fish icon
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: fish.accentColor
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: fish.accentColor
+                                            .withValues(alpha: 0.25),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      fish.icon,
+                                      color: fish.accentColor,
+                                      size: 24,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    fish.scientificName,
-                                    style: TextStyle(
-                                      color: textBlue.withValues(alpha: 0.7),
-                                      fontSize: 12,
-                                      fontStyle: FontStyle.italic,
+                                  const SizedBox(width: 12),
+                                  // Fish info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          fish.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          fish.scientificName,
+                                          style: TextStyle(
+                                            color: textBlue
+                                                .withValues(alpha: 0.7),
+                                            fontSize: 12,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        // Quick info chips
+                                        Row(
+                                          children: [
+                                            _buildInfoChip(
+                                              fish.temperament,
+                                              fish.temperament == 'Aggressive'
+                                                  ? const Color(0xFFEF5350)
+                                                  : fish.temperament ==
+                                                          'Semi-aggressive'
+                                                      ? const Color(0xFFFF9800)
+                                                      : const Color(
+                                                          0xFF66BB6A),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            _buildInfoChip(
+                                              fish.sizeRange,
+                                              textBlue,
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  // Quick info chips
-                                  Row(
-                                    children: [
-                                      _buildInfoChip(
-                                        fish.temperament,
-                                        fish.temperament == 'Aggressive'
-                                            ? const Color(0xFFEF5350)
-                                            : fish.temperament ==
-                                                    'Semi-aggressive'
-                                                ? const Color(0xFFFF9800)
-                                                : const Color(0xFF66BB6A),
+                                  // Selection indicator
+                                  if (isSelected)
+                                    Container(
+                                      width: 26,
+                                      height: 26,
+                                      decoration: const BoxDecoration(
+                                        color: primaryBlue,
+                                        shape: BoxShape.circle,
                                       ),
-                                      const SizedBox(width: 6),
-                                      _buildInfoChip(
-                                        fish.size,
-                                        textBlue,
+                                      child: const Icon(
+                                        Icons.check_rounded,
+                                        color: Colors.white,
+                                        size: 16,
                                       ),
-                                    ],
-                                  ),
+                                    )
+                                  else if (isOtherSelected)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: textBlue.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'In use',
+                                        style: TextStyle(
+                                          color: textBlue.withValues(alpha: 0.5),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Icon(
+                                      Icons.add_circle_outline_rounded,
+                                      color: textBlue.withValues(alpha: 0.4),
+                                      size: 22,
+                                    ),
                                 ],
                               ),
                             ),
-                            // Selection indicator
-                            if (isSelected)
-                              Container(
-                                width: 26,
-                                height: 26,
-                                decoration: const BoxDecoration(
-                                  color: primaryBlue,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              )
-                            else if (isOtherSelected)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: textBlue.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'In use',
-                                  style: TextStyle(
-                                    color: textBlue.withValues(alpha: 0.5),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              )
-                            else
-                              Icon(
-                                Icons.add_circle_outline_rounded,
-                                color: textBlue.withValues(alpha: 0.4),
-                                size: 22,
-                              ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),

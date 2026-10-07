@@ -1,4 +1,3 @@
-```dart
 import 'package:flutter/material.dart';
 
 class AquaBotScreen extends StatefulWidget {
@@ -383,4 +382,4 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
     );
   }
 }
-```
+

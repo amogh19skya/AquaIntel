@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/reminder_model.dart';
+import '../models/aquarium_model.dart';
+import '../services/reminder_service.dart';
+import '../services/notification_service.dart';
+import '../services/settings_service.dart';
+import '../services/aquarium_service.dart';
 
-/// "Schedule Maintenance" form screen.
-///
-/// Matches the AquaIntel dark‑oceanic design language used across
-/// [HomeScreen], [ReminderScreen], and [SignInScreen].
+/// Schedule Maintenance form screen.
+/// Supports creating a new reminder or editing an existing one.
 class ReminderFormScreen extends StatefulWidget {
-  const ReminderFormScreen({super.key});
+  /// Pass an existing reminder to enter edit mode.
+  final ReminderModel? existingReminder;
+
+  const ReminderFormScreen({super.key, this.existingReminder});
 
   @override
   State<ReminderFormScreen> createState() => _ReminderFormScreenState();
@@ -24,30 +30,27 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
   static const Color textBlue = Color(0xFF70A9CC);
   static const Color accentGreen = Color(0xFF4CD964);
 
+  // ─── Services ───
+  final _reminderService = ReminderService();
+  final _notificationService = NotificationService();
+  final _settingsService = SettingsService();
+  final _aquariumService = AquariumService();
+
   // ─── Form state ───
-  final TextEditingController _tankNameController = TextEditingController();
-  String _selectedTaskType = '';
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  ReminderType _selectedType = ReminderType.feeding;
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
+  AquariumModel? _selectedAquarium;
+  List<AquariumModel> _aquariums = [];
+  bool _isLoading = false;
+  bool _isLoadingAquariums = true;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
-  // Task types shown as chips (matches the screenshot)
-  static const List<String> _taskTypes = [
-    'Fish Feed',
-    'Water Change',
-    'Tank Cleaning',
-    'Filter Wash',
-  ];
-
-  // Icon + colour mapping per task type
-  static final Map<String, _TaskMeta> _taskMeta = {
-    'Fish Feed': _TaskMeta(Icons.restaurant, const Color(0xFFFF9800)),
-    'Water Change': _TaskMeta(Icons.water_drop, const Color(0xFF42A5F5)),
-    'Tank Cleaning': _TaskMeta(Icons.cleaning_services, const Color(0xFF66BB6A)),
-    'Filter Wash': _TaskMeta(Icons.settings, const Color(0xFFAB47BC)),
-  };
+  bool get _isEditMode => widget.existingReminder != null;
 
   @override
   void initState() {
@@ -56,47 +59,77 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _fadeAnim = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOut,
-    );
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
+    _loadAquariums();
+
+    // Pre-fill form if editing
+    if (_isEditMode) {
+      final r = widget.existingReminder!;
+      _titleController.text = r.title;
+      _descriptionController.text = r.description;
+      _selectedType = r.type;
+      _selectedDate = r.scheduledDateTime;
+      _selectedTime = TimeOfDay.fromDateTime(r.scheduledDateTime);
+    }
+  }
+
+  Future<void> _loadAquariums() async {
+    try {
+      final list = await _aquariumService.getAquariums().first;
+      if (!mounted) return;
+      setState(() {
+        _aquariums = list;
+        _isLoadingAquariums = false;
+        // Pre-select aquarium in edit mode
+        if (_isEditMode && widget.existingReminder!.aquariumId != null) {
+          final match = list.cast<AquariumModel?>().firstWhere(
+            (a) => a?.id == widget.existingReminder!.aquariumId,
+            orElse: () => null,
+          );
+          _selectedAquarium = match ?? (list.isNotEmpty ? list.first : null);
+        } else if (list.isNotEmpty) {
+          _selectedAquarium = list.first;
+        }
+      });
+    } catch (e, st) {
+      debugPrint('AQUARIUM LOAD ERROR: $e');
+      debugPrintStack(stackTrace: st);
+      if (mounted) setState(() => _isLoadingAquariums = false);
+    }
   }
 
   @override
   void dispose() {
     _animController.dispose();
-    _tankNameController.dispose();
+    _titleController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
-  // ─── Date / Time pickers ───
+  // ─── Pickers ─────────────────────────────────────────────
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) => _datePickerTheme(child),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+      builder: (context, child) => _pickerTheme(child),
     );
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
       initialTime: _selectedTime,
-      builder: (context, child) => _datePickerTheme(child),
+      builder: (context, child) => _pickerTheme(child),
     );
-    if (picked != null) {
-      setState(() => _selectedTime = picked);
-    }
+    if (picked != null) setState(() => _selectedTime = picked);
   }
 
-  Widget _datePickerTheme(Widget? child) {
+  Widget _pickerTheme(Widget? child) {
     return Theme(
       data: Theme.of(context).copyWith(
         colorScheme: const ColorScheme.dark(
@@ -105,60 +138,191 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
           surface: cardColor,
           onSurface: Colors.white,
         ),
-        dialogTheme: const DialogThemeData(
-          backgroundColor: backgroundColor,
-        ),
+        dialogTheme: const DialogThemeData(backgroundColor: backgroundColor),
       ),
       child: child!,
     );
   }
 
-  // ─── Validation & submission ───
+  // ─── Submit ──────────────────────────────────────────────
 
-  void _submitReminder() {
-    if (_tankNameController.text.trim().isEmpty) {
-      _showSnack('Please enter a tank name');
+  Future<void> _submitReminder() async {
+    // ── Validation ────────────────────────────────────────
+    if (_titleController.text.trim().isEmpty) {
+      _showSnack('Please enter a reminder title');
       return;
     }
-    if (_selectedTaskType.isEmpty) {
-      _showSnack('Please select a task type');
+    if (_aquariums.isNotEmpty && _selectedAquarium == null) {
+      _showSnack('Please select an aquarium');
       return;
     }
 
-    final reminder = Reminder(
-      tankName: _tankNameController.text.trim(),
-      taskType: _selectedTaskType,
-      scheduledDate: _selectedDate,
-      scheduledTime: DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        _selectedTime.hour,
-        _selectedTime.minute,
-      ),
-      createdAt: DateTime.now(),
+    final scheduledDT = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
     );
 
-    // TODO: Persist reminder via provider / API
-    debugPrint('Reminder created: $reminder');
+    if (scheduledDT.isBefore(DateTime.now())) {
+      _showSnack('Please select a future date and time');
+      return;
+    }
 
-    Navigator.pop(context, reminder);
+    setState(() => _isLoading = true);
+
+    // ── Step 1: Read all relevant notification settings ──
+    bool notificationsOn = true;
+    bool feedingAlertsOn = true;
+    bool waterChangeAlertsOn = true;
+    bool soundOn = false;
+
+    try {
+      notificationsOn = await _settingsService.getNotificationsEnabled();
+      feedingAlertsOn = await _settingsService.getFeedingAlerts();
+      waterChangeAlertsOn = await _settingsService.getWaterChangeAlerts();
+      soundOn = await _settingsService.getSoundEnabled();
+    } catch (e) {
+      debugPrint('REMINDER: could not read settings, using defaults: $e');
+    }
+
+    final now = DateTime.now();
+    final notificationId = _isEditMode
+        ? widget.existingReminder!.notificationId
+        : scheduledDT.millisecondsSinceEpoch.remainder(2147483647);
+
+    final reminder = ReminderModel(
+      id: _isEditMode ? widget.existingReminder!.id : null,
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      type: _selectedType,
+      aquariumId: _selectedAquarium?.id,
+      aquariumName: _selectedAquarium?.name ?? 'My Aquarium',
+      scheduledDateTime: scheduledDT,
+      isCompleted: false,
+      notificationEnabled: notificationsOn,
+      createdAt: _isEditMode ? widget.existingReminder!.createdAt : now,
+      updatedAt: now,
+      notificationId: notificationId,
+    );
+
+    // ── Step 2: Save to Firestore ─────────────────────────
+    try {
+      if (_isEditMode) {
+        await _notificationService.cancelNotification(
+            widget.existingReminder!.notificationId);
+        await _reminderService.updateReminder(reminder);
+        debugPrint('REMINDER: updated successfully id=${reminder.id}');
+      } else {
+        final docId = await _reminderService.addReminder(reminder);
+        debugPrint('REMINDER: saved successfully docId=$docId');
+      }
+    } catch (e, st) {
+      debugPrint('REMINDER SAVE FAILED BECAUSE: $e');
+      debugPrintStack(stackTrace: st);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showSnack('Failed to save reminder: $e');
+      return;
+    }
+
+    // ── Step 3: Schedule local notification (non-fatal) ──
+    // Decision tree:
+    //   Push Notifications ON
+    //     Feeding    → also check feedingAlerts switch
+    //     WaterChange → also check waterChangeAlerts switch
+    //     Others     → schedule if master is ON
+    if (notificationsOn) {
+      try {
+        final aquariumName = reminder.aquariumName;
+
+        if (reminder.type == ReminderType.feeding && feedingAlertsOn) {
+          await _notificationService.scheduleFeedingReminder(
+            id: notificationId,
+            aquariumName: aquariumName,
+            scheduledAt: scheduledDT,
+            soundEnabled: soundOn,
+          );
+        } else if (reminder.type == ReminderType.waterChange &&
+            waterChangeAlertsOn) {
+          await _notificationService.scheduleWaterChangeReminder(
+            id: notificationId,
+            aquariumName: aquariumName,
+            scheduledAt: scheduledDT,
+            soundEnabled: soundOn,
+          );
+        } else if (reminder.type != ReminderType.feeding &&
+            reminder.type != ReminderType.waterChange) {
+          // Other types (filter, medication, maintenance, custom, tank cleaning)
+          await _notificationService.scheduleGenericReminder(
+            id: notificationId,
+            title: 'AquaIntel – ${reminder.type.label}',
+            body: _buildNotificationBody(reminder),
+            scheduledAt: scheduledDT,
+            soundEnabled: soundOn,
+          );
+        } else {
+          debugPrint(
+              'REMINDER: notification skipped – type-specific switch is OFF');
+        }
+        debugPrint(
+            'REMINDER: notification scheduled id=$notificationId at $scheduledDT');
+      } catch (e, st) {
+        // Notification failure is non-fatal; reminder is already saved.
+        debugPrint(
+            'REMINDER: notification scheduling failed (reminder still saved): $e');
+        debugPrintStack(stackTrace: st);
+      }
+    } else {
+      debugPrint(
+          'REMINDER: notification skipped – Push Notifications master switch is OFF');
+    }
+
+    // ── Step 4: Success ───────────────────────────────────
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    _showSnack(
+      _isEditMode ? 'Reminder updated successfully!' : 'Reminder set successfully!',
+      isSuccess: true,
+    );
+    Navigator.pop(context, true);
   }
 
-  void _showSnack(String msg) {
+  String _buildNotificationBody(ReminderModel r) {
+    final aquarium = r.aquariumName.isNotEmpty ? r.aquariumName : 'your aquarium';
+    switch (r.type) {
+      case ReminderType.feeding:
+        return 'Time to feed the fish in $aquarium.';
+      case ReminderType.waterChange:
+        return 'Time for a water change in $aquarium.';
+      case ReminderType.filterCleaning:
+        return 'Time to clean the filter in $aquarium.';
+      case ReminderType.tankCleaning:
+        return 'Time to clean $aquarium.';
+      case ReminderType.medication:
+        return 'Time to add medication to $aquarium.';
+      case ReminderType.maintenance:
+        return 'Maintenance due for $aquarium.';
+      case ReminderType.custom:
+        return r.title;
+    }
+  }
+
+  void _showSnack(String msg, {bool isSuccess = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: cardColor,
+        backgroundColor: isSuccess ? accentGreen.withValues(alpha: 0.9) : cardColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
-  // ══════════════════════════════════════════════════
+  // ──────────────────────────────────────────────────────────
   // BUILD
-  // ══════════════════════════════════════════════════
+  // ──────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +333,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
           opacity: _fadeAnim,
           child: Stack(
             children: [
-              // ── Top gradient ──
+              // Top gradient
               Positioned(
                 top: 0,
                 left: 0,
@@ -191,22 +355,17 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
                 ),
               ),
 
-              // ── Main content ──
+              // Main content
               CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  // ─── App bar ───
                   SliverToBoxAdapter(child: _buildAppBar()),
-
-                  // ─── Form body ───
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                       child: _buildFormCard(),
                     ),
                   ),
-
-                  // ─── Action buttons ───
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
@@ -222,16 +381,13 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
     );
   }
 
-  // ══════════════════════════════════════════════════
-  // APP BAR
-  // ══════════════════════════════════════════════════
+  // ─── App Bar ─────────────────────────────────────────────
 
   Widget _buildAppBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
         children: [
-          // Back button
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
@@ -245,18 +401,14 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
                   width: 1,
                 ),
               ),
-              child: const Icon(
-                Icons.arrow_back_ios_new,
-                color: textBlue,
-                size: 16,
-              ),
+              child: const Icon(Icons.arrow_back_ios_new, color: textBlue, size: 16),
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Schedule Maintenance',
-              style: TextStyle(
+              _isEditMode ? 'Edit Reminder' : 'Schedule Maintenance',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -264,7 +416,6 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
               ),
             ),
           ),
-          // Decorative water‑drop icon
           Container(
             width: 36,
             height: 36,
@@ -272,20 +423,14 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
               color: primaryBlue.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.alarm_add_rounded,
-              color: primaryBlue,
-              size: 20,
-            ),
+            child: const Icon(Icons.alarm_add_rounded, color: primaryBlue, size: 20),
           ),
         ],
       ),
     );
   }
 
-  // ══════════════════════════════════════════════════
-  // FORM CARD
-  // ══════════════════════════════════════════════════
+  // ─── Form Card ───────────────────────────────────────────
 
   Widget _buildFormCard() {
     return Container(
@@ -294,10 +439,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: primaryBlue.withValues(alpha: 0.1),
-          width: 1,
-        ),
+        border: Border.all(color: primaryBlue.withValues(alpha: 0.1), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.18),
@@ -309,33 +451,46 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─── Tank Name ───
-          _buildSectionLabel('Tank Name'),
+          // Title field
+          _buildLabel('Reminder Title'),
           const SizedBox(height: 10),
-          _buildTankNameField(),
+          _buildTextField(_titleController, 'e.g., Feed the clownfish'),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // ─── Task Type ───
-          _buildSectionLabel('Select Task Type'),
+          // Description field
+          _buildLabel('Description (optional)'),
+          const SizedBox(height: 10),
+          _buildTextField(_descriptionController, 'Additional notes...', maxLines: 2),
+
+          const SizedBox(height: 20),
+
+          // Aquarium selector
+          _buildLabel('Aquarium'),
+          const SizedBox(height: 10),
+          _buildAquariumSelector(),
+
+          const SizedBox(height: 20),
+
+          // Task type
+          _buildLabel('Task Type'),
           const SizedBox(height: 12),
-          _buildTaskTypeChips(),
+          _buildTypeChips(),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // ─── Date & Time ───
-          _buildSectionLabel('Schedule Date & Time'),
+          // Date & time
+          _buildLabel('Schedule Date & Time'),
           const SizedBox(height: 12),
-          _buildDateSelector(),
+          _buildDateRow(),
           const SizedBox(height: 12),
-          _buildTimeSelector(),
+          _buildTimeRow(),
         ],
       ),
     );
   }
 
-  // ── Section label ──
-  Widget _buildSectionLabel(String text) {
+  Widget _buildLabel(String text) {
     return Text(
       text,
       style: TextStyle(
@@ -347,24 +502,20 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
     );
   }
 
-  // ── Tank name input ──
-  Widget _buildTankNameField() {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint, {
+    int maxLines = 1,
+  }) {
     return TextField(
-      controller: _tankNameController,
+      controller: controller,
+      maxLines: maxLines,
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
-        hintText: 'e.g., Main 55 Gallon Reef',
-        hintStyle: TextStyle(
-          color: textBlue.withValues(alpha: 0.45),
-          fontSize: 13,
-        ),
+        hintText: hint,
+        hintStyle: TextStyle(color: textBlue.withValues(alpha: 0.45), fontSize: 13),
         filled: true,
         fillColor: inputColor,
-        prefixIcon: Icon(
-          Icons.water,
-          color: primaryBlue.withValues(alpha: 0.6),
-          size: 20,
-        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -373,41 +524,111 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: primaryBlue, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }
 
-  // ── Task‑type chips ──
-  Widget _buildTaskTypeChips() {
+  Widget _buildAquariumSelector() {
+    if (_isLoadingAquariums) {
+      return Container(
+        height: 52,
+        decoration: BoxDecoration(
+          color: inputColor,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: primaryBlue),
+          ),
+        ),
+      );
+    }
+
+    if (_aquariums.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: inputColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+        ),
+        child: Text(
+          'No aquariums found. Add one first.',
+          style: TextStyle(color: textBlue.withValues(alpha: 0.6), fontSize: 13),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: inputColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<AquariumModel>(
+          value: _selectedAquarium,
+          isExpanded: true,
+          dropdownColor: cardColor,
+          icon: Icon(Icons.keyboard_arrow_down, color: textBlue.withValues(alpha: 0.6)),
+          items: _aquariums.map((a) {
+            return DropdownMenuItem<AquariumModel>(
+              value: a,
+              child: Text(
+                a.name,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            );
+          }).toList(),
+          onChanged: (val) => setState(() => _selectedAquarium = val),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeChips() {
+    final types = [
+      (ReminderType.feeding, Icons.restaurant, const Color(0xFFFF9800)),
+      (ReminderType.waterChange, Icons.water_drop, const Color(0xFF42A5F5)),
+      (ReminderType.filterCleaning, Icons.settings, const Color(0xFFAB47BC)),
+      (ReminderType.tankCleaning, Icons.cleaning_services, const Color(0xFF66BB6A)),
+      (ReminderType.medication, Icons.medication, const Color(0xFFEF5350)),
+      (ReminderType.maintenance, Icons.build, const Color(0xFF26C6DA)),
+      (ReminderType.custom, Icons.edit_note, const Color(0xFFBDBDBD)),
+    ];
+
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      children: _taskTypes.map((type) {
-        final isSelected = _selectedTaskType == type;
-        final meta = _taskMeta[type]!;
+      children: types.map((t) {
+        final type = t.$1;
+        final icon = t.$2;
+        final color = t.$3;
+        final isSelected = _selectedType == type;
 
         return GestureDetector(
-          onTap: () => setState(() => _selectedTaskType = type),
+          onTap: () => setState(() => _selectedType = type),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeInOut,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? meta.color.withValues(alpha: 0.18)
-                  : inputColor,
+              color: isSelected ? color.withValues(alpha: 0.18) : inputColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
-                    ? meta.color.withValues(alpha: 0.55)
+                    ? color.withValues(alpha: 0.55)
                     : primaryBlue.withValues(alpha: 0.1),
                 width: 1.5,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: meta.color.withValues(alpha: 0.15),
+                        color: color.withValues(alpha: 0.15),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
@@ -418,20 +639,17 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  meta.icon,
-                  color: isSelected
-                      ? meta.color
-                      : textBlue.withValues(alpha: 0.6),
+                  icon,
+                  color: isSelected ? color : textBlue.withValues(alpha: 0.6),
                   size: 16,
                 ),
                 const SizedBox(width: 7),
                 Text(
-                  type,
+                  type.label,
                   style: TextStyle(
                     color: isSelected ? Colors.white : textBlue,
                     fontSize: 13,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
               ],
@@ -442,187 +660,110 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
     );
   }
 
-  // ── Date selector row ──
-  Widget _buildDateSelector() {
+  Widget _buildDateRow() {
     return GestureDetector(
       onTap: _pickDate,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: inputColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: primaryBlue.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: primaryBlue.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.calendar_today_rounded,
-                color: primaryBlue.withValues(alpha: 0.8),
-                size: 17,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Text(
-              'Date: ${DateFormat('MM/dd/yyyy').format(_selectedDate)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-            Icon(
-              Icons.chevron_right,
-              color: textBlue.withValues(alpha: 0.5),
-              size: 20,
-            ),
-          ],
-        ),
+      child: _buildPickerRow(
+        icon: Icons.calendar_today_rounded,
+        label: 'Date: ${DateFormat('MMM dd, yyyy').format(_selectedDate)}',
       ),
     );
   }
 
-  // ── Time selector row ──
-  Widget _buildTimeSelector() {
-    final now = DateTime.now();
-    final timeAsDateTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      _selectedTime.hour,
-      _selectedTime.minute,
-    );
-
+  Widget _buildTimeRow() {
+    final hour = _selectedTime.hour.toString().padLeft(2, '0');
+    final minute = _selectedTime.minute.toString().padLeft(2, '0');
     return GestureDetector(
       onTap: _pickTime,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: inputColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: primaryBlue.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: primaryBlue.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.access_time_rounded,
-                color: primaryBlue.withValues(alpha: 0.8),
-                size: 17,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Text(
-              'Time: ${DateFormat('HH:mm').format(timeAsDateTime)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-            Icon(
-              Icons.chevron_right,
-              color: textBlue.withValues(alpha: 0.5),
-              size: 20,
-            ),
-          ],
-        ),
+      child: _buildPickerRow(
+        icon: Icons.access_time_rounded,
+        label: 'Time: $hour:$minute',
       ),
     );
   }
 
-  // ══════════════════════════════════════════════════
-  // ACTION BUTTONS (Cancel / Set Reminder)
-  // ══════════════════════════════════════════════════
+  Widget _buildPickerRow({required IconData icon, required String label}) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: inputColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: primaryBlue.withValues(alpha: 0.1), width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: primaryBlue.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: primaryBlue.withValues(alpha: 0.8), size: 17),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          const Spacer(),
+          Icon(Icons.chevron_right, color: textBlue.withValues(alpha: 0.5), size: 20),
+        ],
+      ),
+    );
+  }
+
+  // ─── Action Buttons ──────────────────────────────────────
 
   Widget _buildActionButtons() {
     return Row(
       children: [
-        // Cancel
         Expanded(
           child: SizedBox(
             height: 50,
             child: OutlinedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: _isLoading ? null : () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                  color: primaryBlue.withValues(alpha: 0.35),
-                  width: 1.5,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                side: BorderSide(color: primaryBlue.withValues(alpha: 0.35), width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               child: const Text(
                 'Cancel',
-                style: TextStyle(
-                  color: primaryBlue,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: primaryBlue, fontSize: 15, fontWeight: FontWeight.w600),
               ),
             ),
           ),
         ),
         const SizedBox(width: 14),
-
-        // Set Reminder
         Expanded(
           child: SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: _submitReminder,
+              onPressed: _isLoading ? null : _submitReminder,
               style: ElevatedButton.styleFrom(
                 backgroundColor: accentGreen,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                shadowColor: accentGreen.withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text(
-                'Set Reminder',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.3,
-                ),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      _isEditMode ? 'Update Reminder' : 'Set Reminder',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
             ),
           ),
         ),
       ],
     );
   }
-}
-
-// ─── Helper class for task‑type metadata ───
-class _TaskMeta {
-  final IconData icon;
-  final Color color;
-
-  const _TaskMeta(this.icon, this.color);
 }
