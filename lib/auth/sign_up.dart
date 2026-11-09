@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
+import '../theme/app_theme.dart';
 import 'auth_service.dart';
 
 class SignupPage extends StatefulWidget {
@@ -17,19 +18,22 @@ class _SignupPageState extends State<SignupPage>
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
-  final AuthService _authService = AuthService();
+  final IAuthService _authService;
+
+  _SignupPageState({IAuthService? authService})
+      : _authService = authService ?? AuthService();
 
   bool hidePassword = true;
   bool hideConfirmPassword = true;
   bool _isLoading = false;
 
-  // AquaIntel colors (matching sign_in)
-  static const Color backgroundColor = Color(0xFF0D2D47);
-  static const Color topColor = Color(0xFF205779);
-  static const Color cardColor = Color(0xFF1C4667);
-  static const Color inputColor = Color(0xFF163B5A);
-  static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color textBlue = Color(0xFF70A9CC);
+  // AquaIntel colors
+  static const Color backgroundColor = AquaColors.bg;
+  static const Color topColor = AquaColors.bgSecondary;
+  static const Color cardColor = AquaColors.card;
+  static const Color inputColor = AquaColors.input;
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color textBlue = AquaColors.textSecondary;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -120,7 +124,7 @@ class _SignupPageState extends State<SignupPage>
             ),
           ],
         ),
-        backgroundColor: const Color(0xFFD32F2F),
+        backgroundColor: AquaColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -184,7 +188,7 @@ class _SignupPageState extends State<SignupPage>
                                 end: Alignment.bottomRight,
                                 colors: [
                                   primaryBlue.withValues(alpha: 0.3),
-                                  const Color(0xFF1A4A70),
+                                  AquaColors.cardElevated,
                                 ],
                               ),
                               shape: BoxShape.circle,
@@ -242,7 +246,7 @@ class _SignupPageState extends State<SignupPage>
                               color: cardColor,
                               borderRadius: BorderRadius.circular(23),
                               border: Border.all(
-                                color: primaryBlue.withValues(alpha: 0.08),
+                                color: AquaColors.border,
                                 width: 1,
                               ),
                               boxShadow: [
@@ -368,7 +372,7 @@ class _SignupPageState extends State<SignupPage>
                                       hidePassword
                                           ? Icons.visibility_off_outlined
                                           : Icons.visibility_outlined,
-                                      color: const Color(0xFF77A5C1),
+                                      color: AquaColors.textSecondary,
                                       size: 19,
                                     ),
                                   ),
@@ -415,7 +419,7 @@ class _SignupPageState extends State<SignupPage>
                                       hideConfirmPassword
                                           ? Icons.visibility_off_outlined
                                           : Icons.visibility_outlined,
-                                      color: const Color(0xFF77A5C1),
+                                      color: AquaColors.textSecondary,
                                       size: 19,
                                     ),
                                   ),
@@ -553,11 +557,11 @@ class _SignupPageState extends State<SignupPage>
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(
-          color: Color(0xFF6D99B8),
+          color: AquaColors.textMuted,
         ),
         prefixIcon: Icon(
           icon,
-          color: const Color(0xFF77A5C1),
+          color: AquaColors.textSecondary,
           size: 19,
         ),
         suffixIcon: suffixIcon,
@@ -565,11 +569,17 @@ class _SignupPageState extends State<SignupPage>
         fillColor: inputColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(
+            color: AquaColors.border,
+            width: 1,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(
+            color: AquaColors.border,
+            width: 1,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
@@ -581,20 +591,20 @@ class _SignupPageState extends State<SignupPage>
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
           borderSide: const BorderSide(
-            color: Color(0xFFEF5350),
+            color: AquaColors.error,
             width: 1,
           ),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
           borderSide: const BorderSide(
-            color: Color(0xFFEF5350),
+            color: AquaColors.error,
             width: 1.5,
           ),
         ),
         errorStyle: const TextStyle(
           fontSize: 11,
-          color: Color(0xFFEF9A9A),
+          color: AquaColors.error,
         ),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 15,

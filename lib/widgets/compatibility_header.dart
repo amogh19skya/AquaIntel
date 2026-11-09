@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 /// Reusable Compatibility Checker header widget.
 ///
@@ -8,9 +9,9 @@ import 'package:flutter/material.dart';
 /// Preserves the exact visual design (title, subtitle, icon, spacing,
 /// colours, typography, gradient background) from the original screen.
 class CompatibilityHeader extends StatelessWidget {
-  // ─── AquaIntel colour tokens (matching the Compatibility Checker screen) ──
-  static const Color _primaryBlue = Color(0xFF29A8DF);
-  static const Color _textBlue = Color(0xFF70A9CC);
+  // ─── AquaIntel colour tokens ──
+  static const Color _primaryBlue = AquaColors.accent;
+  static const Color _textBlue = AquaColors.textSecondary;
 
   const CompatibilityHeader({super.key});
 

@@ -238,7 +238,7 @@ create_or_update_collection("chatbot_sessions", {
         "additionalProperties": True,
         "properties": {
             "_id":            {"bsonType": "objectId"},
-            "user_id":        {"bsonType": "objectId", "description": "Reference to users._id"},
+            "user_id":        {"bsonType": ["objectId", "string"], "description": "Reference to users._id or Firebase UID"},
             "started_at":     {"bsonType": "date",     "description": "Session start timestamp"},
             "total_messages": {"bsonType": "int",      "minimum": 0,
                                "description": "Message count for API rate limiting"},

@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidImage() {
+      return request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|jpg|png|webp|gif)');
+    }
+
+    // Aquarium photos stored under:
+    // users/{uid}/aquariums/{aquariumId}/{fileName}
+    match /users/{uid}/aquariums/{aquariumId}/{fileName} {
+      // Only the authenticated owner can read their own aquarium images
+      allow read: if isOwner(uid);
+
+      // Only the authenticated owner can upload/update, with 5 MB limit & image MIME validation
+      allow create, update: if isOwner(uid) && isValidImage();
+
+      // Only the authenticated owner can delete their aquarium images
+      allow delete: if isOwner(uid);
+    }
+  }
+}
+

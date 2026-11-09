@@ -2,14 +2,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/fish.dart';
 
+/// Abstract contract for fish data operations (DIP).
+abstract class IFishService {
+  Future<List<Fish>> getFishList();
+  Future<Fish?> getFishById(String id);
+}
+
 /// Service responsible for fetching fish data from Cloud Firestore.
 ///
 /// Reads from the top-level `fish` collection.
 /// Documents are public reference data (no auth required in Firestore rules).
 ///
 /// Firestore path: `fish/{fishId}`
-class FishService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+class FishService implements IFishService {
+  final FirebaseFirestore _firestore;
+
+  FishService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   // ─── Collection reference ─────────────────────────────────────────────────
 
@@ -26,6 +35,7 @@ class FishService {
   /// Returns an empty list — not an error — when the collection is empty.
   /// Throws a human-readable [Exception] on Firestore errors so callers can
   /// display a user-friendly message.
+  @override
   Future<List<Fish>> getFishList() async {
     try {
       debugPrint('[FishService] Fetching fish collection…');
@@ -55,9 +65,7 @@ class FishService {
     }
   }
 
-  /// Fetches a single fish document by its Firestore document [id].
-  ///
-  /// Returns `null` when no document with that ID exists.
+  @override
   Future<Fish?> getFishById(String id) async {
     try {
       debugPrint('[FishService] Fetching fish "$id"…');

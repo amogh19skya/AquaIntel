@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../routes/app_routes.dart';
+import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,10 +32,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // UI Theme Colors[cite: 1]
-    const Color bgColor = Color(0xFF0A2236);
-    const Color curveColor = Color(0xFF102D45);
-    const Color subtitleColor = Color(0xFF7A9BB8);
+    const Color bgColor = AquaColors.bg;
+    const Color curveColor = AquaColors.bgSecondary;
+    const Color subtitleColor = AquaColors.textSecondary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -168,9 +168,9 @@ class LogoPainter extends CustomPainter {
       ..close();
     canvas.drawPath(fishPath, paint);
 
-    // Fish Eye Cutout[cite: 1]
+    // Fish Eye Cutout
     final eyePaint = Paint()
-      ..color = const Color(0xFF0A2236)
+      ..color = AquaColors.bg
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(w * 0.64, h * 0.78), w * 0.025, eyePaint);
   }

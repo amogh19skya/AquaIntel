@@ -3,6 +3,29 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 
+/// Abstract contract for Settings operations (DIP).
+abstract class ISettingsService {
+  Future<bool> getNotificationsEnabled();
+  Future<bool> getFeedingAlerts();
+  Future<bool> getWaterChangeAlerts();
+  Future<bool> getSoundEnabled();
+  Future<bool> getHapticFeedback();
+  Future<bool> getDarkMode();
+  Future<bool> getAutoBackup();
+  Future<int> getTemperatureUnit();
+
+  Future<void> setNotificationsEnabled(bool enabled);
+  Future<void> setFeedingAlerts(bool enabled);
+  Future<void> setWaterChangeAlerts(bool enabled);
+  Future<void> setSoundEnabled(bool enabled);
+  Future<void> setHapticFeedback(bool enabled);
+  Future<void> setDarkMode(bool enabled);
+  Future<void> setAutoBackup(bool enabled);
+  Future<void> setTemperatureUnit(int index);
+
+  Stream<bool> notificationsEnabledStream();
+}
+
 /// Singleton settings service for AquaIntel.
 ///
 /// Persists all user preferences to SharedPreferences (fast, local, offline-safe).
@@ -18,7 +41,7 @@ import 'notification_service.dart';
 ///   dark_mode              – dark-mode switch
 ///   auto_backup            – auto-backup switch
 ///   temperature_unit       – 0 = Celsius, 1 = Fahrenheit
-class SettingsService {
+class SettingsService implements ISettingsService {
   static final SettingsService _instance = SettingsService._internal();
   factory SettingsService() => _instance;
   SettingsService._internal();
@@ -50,6 +73,7 @@ class SettingsService {
 
   // ─── Getters ──────────────────────────────────────────────
 
+  @override
   Future<bool> getNotificationsEnabled() async {
     // Try Firestore first (syncs across devices), fallback to local prefs.
     try {
@@ -65,37 +89,43 @@ class SettingsService {
     return prefs.getBool(_kNotifications) ?? true;
   }
 
+  @override
   Future<bool> getFeedingAlerts() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_kFeeding) ?? true;
   }
 
+  @override
   Future<bool> getWaterChangeAlerts() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_kWaterChange) ?? true;
   }
 
+  @override
   Future<bool> getSoundEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_kSound) ?? false;
   }
 
+  @override
   Future<bool> getHapticFeedback() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_kHaptic) ?? true;
   }
 
+  @override
   Future<bool> getDarkMode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_kDarkMode) ?? true;
   }
 
+  @override
   Future<bool> getAutoBackup() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_kAutoBackup) ?? false;
   }
 
-  /// Returns temperature unit index: 0 = Celsius, 1 = Fahrenheit.
+  @override
   Future<int> getTemperatureUnit() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_kTempUnit) ?? 0;
@@ -103,8 +133,7 @@ class SettingsService {
 
   // ─── Setters ──────────────────────────────────────────────
 
-  /// Persists the master notification toggle.
-  /// When turned OFF, cancels all scheduled notifications.
+  @override
   Future<void> setNotificationsEnabled(bool enabled) async {
     // Mirror to Firestore (best-effort).
     try {
@@ -128,36 +157,43 @@ class SettingsService {
     }
   }
 
+  @override
   Future<void> setFeedingAlerts(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kFeeding, enabled);
   }
 
+  @override
   Future<void> setWaterChangeAlerts(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kWaterChange, enabled);
   }
 
+  @override
   Future<void> setSoundEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kSound, enabled);
   }
 
+  @override
   Future<void> setHapticFeedback(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kHaptic, enabled);
   }
 
+  @override
   Future<void> setDarkMode(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kDarkMode, enabled);
   }
 
+  @override
   Future<void> setAutoBackup(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kAutoBackup, enabled);
   }
 
+  @override
   Future<void> setTemperatureUnit(int index) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kTempUnit, index);
@@ -165,7 +201,7 @@ class SettingsService {
 
   // ─── Real-time stream ─────────────────────────────────────
 
-  /// Streams the master notification setting from Firestore in real time.
+  @override
   Stream<bool> notificationsEnabledStream() {
     final doc = _settingsDoc;
     if (doc == null) return Stream.value(true);

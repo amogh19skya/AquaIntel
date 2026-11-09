@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../models/aquarium_model.dart';
 import '../../services/aquarium_service.dart';
+import '../../services/aquarium_image_service.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/aquarium/aquarium_image_picker.dart';
 
 /// Screen for editing an existing aquarium.
 ///
@@ -17,7 +21,11 @@ class EditAquariumScreen extends StatefulWidget {
 
 class _EditAquariumScreenState extends State<EditAquariumScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _aquariumService = AquariumService();
+  final IAquariumService _aquariumService;
+  final AquariumImageService _imageService = AquariumImageService();
+
+  _EditAquariumScreenState({IAquariumService? aquariumService})
+      : _aquariumService = aquariumService ?? AquariumService();
 
   late final TextEditingController _nameController;
   late final TextEditingController _lengthController;
@@ -29,14 +37,18 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
   late String _selectedType;
   double? _volumeLitres;
   bool _isSaving = false;
+  String _savingStatus = 'Save Changes';
 
-  // AquaIntel colours
-  static const Color backgroundColor = Color(0xFF0A2236);
-  static const Color cardColor = Color(0xFF1C4667);
-  static const Color inputColor = Color(0xFF163B5A);
-  static const Color primaryColor = Color(0xFF29A8DF);
-  static const Color textColor = Colors.white;
-  static const Color secondaryTextColor = Color(0xFF70A9CC);
+  File? _newImageFile;
+  bool _isImageRemoved = false;
+
+  // AquaIntel colours – mapped to shared theme tokens
+  static const Color backgroundColor = AquaColors.bg;
+  static const Color cardColor = AquaColors.card;
+  static const Color inputColor = AquaColors.input;
+  static const Color primaryColor = AquaColors.accent;
+  static const Color textColor = AquaColors.textPrimary;
+  static const Color secondaryTextColor = AquaColors.textSecondary;
 
   @override
   void initState() {
@@ -101,9 +113,36 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+      _savingStatus = _newImageFile != null ? 'Uploading photo...' : 'Saving changes...';
+    });
 
     try {
+      Object? imageUrlToSave = imageUrlUnset;
+
+      if (_newImageFile != null) {
+        final newUrl = await _imageService.uploadImage(
+          file: _newImageFile!,
+          aquariumId: widget.aquarium.id,
+          onProgress: (progress) {
+            if (mounted) {
+              setState(() {
+                _savingStatus = 'Uploading photo (${(progress * 100).toInt()}%)...';
+              });
+            }
+          },
+        );
+        imageUrlToSave = newUrl;
+      } else if (_isImageRemoved) {
+        await _imageService.deleteImage(widget.aquarium.id);
+        imageUrlToSave = null;
+      }
+
+      if (mounted) {
+        setState(() => _savingStatus = 'Saving changes...');
+      }
+
       await _aquariumService.updateAquarium(
         aquariumId: widget.aquarium.id,
         name: _nameController.text.trim(),
@@ -114,6 +153,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
         unit: _selectedUnit,
         volumeLitres: _volumeLitres!,
         description: _descriptionController.text.trim(),
+        imageUrl: imageUrlToSave,
       );
 
       if (!mounted) return;
@@ -121,9 +161,14 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString(), isError: true);
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _savingStatus = 'Save Changes';
+        });
+      }
     }
   }
 
@@ -132,7 +177,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
       SnackBar(
         content: Text(message),
         backgroundColor:
-            isError ? Colors.red.shade700 : const Color(0xFF29A8DF),
+            isError ? AquaColors.error : AquaColors.accent,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -175,6 +220,26 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
                 const Text(
                   'Edit your aquarium information and save changes.',
                   style: TextStyle(color: secondaryTextColor, fontSize: 14),
+                ),
+
+                const SizedBox(height: 25),
+
+                _buildLabel('Aquarium Photograph'),
+
+                AquariumImagePicker(
+                  existingImageUrl: _isImageRemoved ? null : widget.aquarium.imageUrl,
+                  onImagePicked: (file) {
+                    setState(() {
+                      _newImageFile = file;
+                      _isImageRemoved = false;
+                    });
+                  },
+                  onImageRemoved: () {
+                    setState(() {
+                      _newImageFile = null;
+                      _isImageRemoved = true;
+                    });
+                  },
                 ),
 
                 const SizedBox(height: 25),
@@ -379,13 +444,26 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
                       ),
                     ),
                     child: _isSaving
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.2,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _savingStatus,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           )
                         : const Text(
                             'Save Changes',

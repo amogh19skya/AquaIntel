@@ -4,6 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../routes/app_routes.dart';
+import '../services/user_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/user_avatar.dart';
+import 'avatar_selection_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -15,12 +19,12 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen>
     with SingleTickerProviderStateMixin {
   // ─── AquaIntel Color Palette ───
-  static const Color backgroundColor = Color(0xFF0D2D47);
-  static const Color topColor = Color(0xFF205779);
-  static const Color cardColor = Color(0xFF1C4667);
-  static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color textBlue = Color(0xFF70A9CC);
-  static const Color surfaceDark = Color(0xFF142F45);
+  static const Color backgroundColor = AquaColors.bg;
+  static const Color topColor = AquaColors.bgSecondary;
+  static const Color cardColor = AquaColors.card;
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color textBlue = AquaColors.textSecondary;
+  static const Color surfaceDark = AquaColors.input;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -33,8 +37,9 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   // ─── State ───
   DateTime? _selectedDob;
   bool _isSaving = false;
+  final UserService _userService = UserService();
+  String _selectedAvatarId = UserModel.defaultAvatarId;
 
-  // ─── Sample user data (replace with actual user data) ───
   late UserModel _currentUser;
 
   @override
@@ -51,19 +56,66 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     );
     _animController.forward();
 
-    // Initialize with sample data
+    final fbUser = FirebaseAuth.instance.currentUser;
     _currentUser = UserModel(
-      fullName: 'Amogh',
-      dateOfBirth: DateTime(2004, 11, 16),
-      email: 'amogh123@gmail.com',
+      id: fbUser?.uid,
+      fullName: fbUser?.displayName ?? 'Aquarist',
+      dateOfBirth: null,
+      email: fbUser?.email ?? '',
+      avatarId: UserModel.defaultAvatarId,
     );
 
     _nameController.text = _currentUser.fullName;
-    _selectedDob = _currentUser.dateOfBirth;
-    if (_selectedDob != null) {
-      _dobController.text = DateFormat('dd MMM, yyyy').format(_selectedDob!);
-    }
     _emailController.text = _currentUser.email;
+
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final avatarId = await _userService.getCurrentAvatarId();
+    final profile = await _userService.currentUserStream().first;
+
+    if (!mounted) return;
+
+    setState(() {
+      _selectedAvatarId = avatarId;
+      if (profile != null) {
+        _currentUser = profile;
+        if (profile.fullName.isNotEmpty) {
+          _nameController.text = profile.fullName;
+        }
+        if (profile.dateOfBirth != null) {
+          _selectedDob = profile.dateOfBirth;
+          _dobController.text =
+              DateFormat('dd MMM, yyyy').format(profile.dateOfBirth!);
+        }
+        if (profile.email.isNotEmpty) {
+          _emailController.text = profile.email;
+        }
+      }
+    });
+  }
+
+  Future<void> _openAvatarSelection() async {
+    HapticFeedback.lightImpact();
+    final newAvatarId = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AvatarSelectionScreen(
+          initialAvatarId: _selectedAvatarId,
+          userName: _nameController.text.trim().isNotEmpty
+              ? _nameController.text.trim()
+              : _currentUser.fullName,
+        ),
+      ),
+    );
+
+    if (newAvatarId != null && mounted) {
+      setState(() {
+        _selectedAvatarId = newAvatarId;
+        _currentUser = _currentUser.copyWith(avatarId: newAvatarId);
+      });
+    }
   }
 
   @override
@@ -99,7 +151,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                       end: Alignment.bottomCenter,
                       colors: [
                         topColor,
-                        Color(0xFF174A6A),
+                        AquaColors.bgSecondary,
                         backgroundColor,
                       ],
                       stops: [0.0, 0.6, 1.0],
@@ -285,71 +337,49 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   // AVATAR SECTION
   // ══════════════════════════════════════════════
   Widget _buildAvatarSection() {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // Avatar circle with gradient border
-        Container(
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF29A8DF),
-                Color(0xFF00E5FF),
-                Color(0xFF1B8FC4),
+    return GestureDetector(
+      onTap: _openAvatarSelection,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Avatar circle with gradient border
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AquaColors.accent,
+                  AquaColors.accentDim,
+                  AquaColors.cardElevated,
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: primaryBlue.withValues(alpha: 0.35),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
               ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: primaryBlue.withValues(alpha: 0.35),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(3),
-            child: Container(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: backgroundColor,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(3),
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: primaryBlue.withValues(alpha: 0.15),
-                  ),
-                  child: const Icon(
-                    Icons.person,
-                    color: primaryBlue,
-                    size: 48,
-                  ),
-                ),
-              ),
+            child: UserAvatar(
+              avatarId: _selectedAvatarId,
+              size: 102,
+              backgroundColor: AquaColors.bgSecondary,
             ),
           ),
-        ),
-        // Camera button
-        Positioned(
-          bottom: 2,
-          right: 2,
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              _showSnackBar('Photo picker coming soon!');
-            },
+          // Edit avatar button badge
+          Positioned(
+            bottom: 2,
+            right: 2,
             child: Container(
               width: 34,
               height: 34,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF29A8DF), Color(0xFF1B8FC4)],
+                  colors: [AquaColors.accent, AquaColors.accentDim],
                 ),
                 shape: BoxShape.circle,
                 border: Border.all(
@@ -365,14 +395,14 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                 ],
               ),
               child: const Icon(
-                Icons.camera_alt,
+                Icons.edit_rounded,
                 color: Colors.white,
                 size: 16,
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -386,7 +416,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: primaryBlue.withValues(alpha: 0.1),
+          color: AquaColors.border,
           width: 1,
         ),
         boxShadow: [
@@ -412,7 +442,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           // Divider
           Container(
             height: 1,
-            color: primaryBlue.withValues(alpha: 0.08),
+            color: AquaColors.border,
           ),
 
           const SizedBox(height: 20),
@@ -430,7 +460,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           // Divider
           Container(
             height: 1,
-            color: primaryBlue.withValues(alpha: 0.08),
+            color: AquaColors.border,
           ),
 
           const SizedBox(height: 20),
@@ -515,13 +545,13 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         Container(
           decoration: BoxDecoration(
             color: readOnly
-                ? surfaceDark.withValues(alpha: 0.5)
+                ? AquaColors.bgSecondary
                 : surfaceDark,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: readOnly
-                  ? primaryBlue.withValues(alpha: 0.05)
-                  : primaryBlue.withValues(alpha: 0.12),
+                  ? AquaColors.border.withValues(alpha: 0.5)
+                  : AquaColors.border,
               width: 1,
             ),
           ),
@@ -612,7 +642,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               color: surfaceDark,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: primaryBlue.withValues(alpha: 0.12),
+                color: AquaColors.border,
                 width: 1,
               ),
             ),
@@ -686,12 +716,11 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             colors: _isSaving
                 ? [
                     primaryBlue.withValues(alpha: 0.4),
-                    const Color(0xFF1B8FC4).withValues(alpha: 0.4),
+                    AquaColors.accentDim.withValues(alpha: 0.4),
                   ]
                 : [
-                    const Color(0xFF29A8DF),
-                    const Color(0xFF1B8FC4),
-                    const Color(0xFF1E6B9A),
+                    AquaColors.accent,
+                    AquaColors.accentDim,
                   ],
           ),
           borderRadius: BorderRadius.circular(16),
@@ -751,7 +780,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           color: cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: const Color(0xFFEF5350).withValues(alpha: 0.25),
+            color: AquaColors.error.withValues(alpha: 0.3),
             width: 1,
           ),
           boxShadow: [
@@ -767,14 +796,14 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           children: [
             Icon(
               Icons.logout_rounded,
-              color: Color(0xFFEF5350),
+              color: AquaColors.error,
               size: 20,
             ),
             SizedBox(width: 10),
             Text(
               'Logout',
               style: TextStyle(
-                color: Color(0xFFEF5350),
+                color: AquaColors.error,
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
@@ -826,7 +855,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     }
   }
 
-  void _handleSave() {
+  Future<void> _handleSave() async {
     HapticFeedback.mediumImpact();
 
     if (_nameController.text.trim().isEmpty) {
@@ -840,11 +869,12 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     final updatedUser = _currentUser.copyWith(
       fullName: _nameController.text.trim(),
       dateOfBirth: _selectedDob,
+      avatarId: _selectedAvatarId,
       updatedAt: DateTime.now(),
     );
 
-    // Simulate save delay
-    Future.delayed(const Duration(milliseconds: 1200), () {
+    try {
+      await _userService.updateUserProfile(updatedUser);
       if (mounted) {
         setState(() {
           _isSaving = false;
@@ -852,7 +882,12 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         });
         _showSnackBar('Profile updated successfully! ✓');
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        _showSnackBar('Failed to save profile: $e');
+      }
+    }
   }
 
   void _showLogoutDialog() {
@@ -865,7 +900,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         ),
         title: const Row(
           children: [
-            Icon(Icons.logout_rounded, color: Color(0xFFEF5350), size: 22),
+            Icon(Icons.logout_rounded, color: AquaColors.error, size: 22),
             SizedBox(width: 10),
             Text(
               'Log Out',
@@ -905,7 +940,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF5350),
+              backgroundColor: AquaColors.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

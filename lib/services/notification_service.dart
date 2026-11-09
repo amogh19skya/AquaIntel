@@ -2,6 +2,42 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:flutter/foundation.dart';
+import '../models/reminder_model.dart';
+import '../main.dart' show navigatorKey;
+
+/// Abstract contract for Notification operations (DIP).
+abstract class INotificationService {
+  Future<void> initialize();
+  Future<bool> requestPermission();
+  Future<void> scheduleFeedingReminder({
+    required int id,
+    required String aquariumName,
+    required DateTime scheduledAt,
+    required bool soundEnabled,
+    String? reminderId,
+  });
+  Future<void> scheduleWaterChangeReminder({
+    required int id,
+    required String aquariumName,
+    required DateTime scheduledAt,
+    required bool soundEnabled,
+    String? reminderId,
+  });
+  Future<void> scheduleGenericReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledAt,
+    required bool soundEnabled,
+    String? reminderId,
+  });
+  Future<void> scheduleReminder(
+    ReminderModel reminder, {
+    bool soundEnabled = true,
+  });
+  Future<void> cancelNotification(int id);
+  Future<void> cancelAllNotifications();
+}
 
 /// Singleton notification service for AquaIntel.
 ///
@@ -11,7 +47,7 @@ import 'package:flutter/foundation.dart';
 ///
 /// Switching the sound preference at runtime swaps which channel is used for
 /// newly scheduled notifications.
-class NotificationService {
+class NotificationService implements INotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
@@ -29,6 +65,7 @@ class NotificationService {
   // ─── Initialization ──────────────────────────────────────
 
   /// Call once during [main] before [runApp].
+  @override
   Future<void> initialize() async {
     if (_initialized) return;
 
@@ -44,6 +81,21 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
+    // Check if the app was launched by tapping a notification (cold start)
+    try {
+      final launchDetails =
+          await _plugin.getNotificationAppLaunchDetails();
+      if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
+        final resp = launchDetails.notificationResponse;
+        if (resp != null) {
+          debugPrint('NotificationService: app launched from notification payload=${resp.payload}');
+          _onNotificationTap(resp);
+        }
+      }
+    } catch (e) {
+      debugPrint('NotificationService: launch details error: $e');
+    }
+
     _initialized = true;
     debugPrint('NotificationService: initialized');
   }
@@ -52,43 +104,50 @@ class NotificationService {
     debugPrint('NotificationService: tapped payload=${response.payload}');
     lastTappedPayload = response.payload;
 
-    // Navigate to the Reminders screen when a notification is tapped.
-    // We import navigatorKey lazily to avoid a circular import at the top level.
-    // ignore: avoid_dynamic_calls
     try {
-      // Dynamically access the navigator key from main.dart via the import below.
-      // Using a simple approach: navigate to '/reminders' if there is a current route.
-      _navigateToReminders();
+      final reminderId = _parseReminderId(response.payload);
+      _navigateToReminders(reminderId);
     } catch (e) {
       debugPrint('NotificationService: navigation failed: $e');
     }
   }
 
-  void _navigateToReminders() {
-    // Import the global navigator key from main.dart.
-    // We use a separate import file to avoid circular imports.
+  String? _parseReminderId(String? payload) {
+    if (payload == null || payload.isEmpty) return null;
+    return payload
+        .replaceFirst('reminder_', '')
+        .replaceFirst('feeding_', '')
+        .replaceFirst('waterChange_', '')
+        .replaceFirst('reminder:', '');
+  }
+
+  void _navigateToReminders(String? reminderId) {
     _pendingNavigation = '/reminders';
+    _pendingReminderId = reminderId;
+    try {
+      navigatorKey.currentState?.pushNamed('/reminders', arguments: reminderId);
+    } catch (e) {
+      debugPrint('NotificationService: navigatorKey push failed: $e');
+    }
   }
 
-  /// Pending navigation path set when a notification is tapped.
-  /// HomeScreen reads this on resume to perform the navigation.
   String? _pendingNavigation;
+  String? _pendingReminderId;
 
-  /// Returns and clears any pending navigation path.
-  String? consumePendingNavigation() {
+  ({String route, String? reminderId})? consumePendingNavigation() {
     final nav = _pendingNavigation;
+    final rId = _pendingReminderId;
     _pendingNavigation = null;
-    return nav;
+    _pendingReminderId = null;
+    if (nav == null) return null;
+    return (route: nav, reminderId: rId);
   }
 
-  /// Last notification payload tapped by the user.
-  /// Format: "feeding_[id]", "waterChange_[id]", or "reminder_[id]".
   String? lastTappedPayload;
-
 
   // ─── Permission ──────────────────────────────────────────
 
-  /// Requests Android notification permission (Android 13+).
+  @override
   Future<bool> requestPermission() async {
     final androidPlugin =
         _plugin.resolvePlatformSpecificImplementation<
@@ -122,61 +181,111 @@ class NotificationService {
 
   // ─── Type-specific schedule methods ──────────────────────
 
-  /// Schedules a feeding reminder notification.
+  @override
   Future<void> scheduleFeedingReminder({
     required int id,
     required String aquariumName,
     required DateTime scheduledAt,
     required bool soundEnabled,
+    String? reminderId,
   }) async {
     final body = aquariumName.isNotEmpty
-        ? 'It\'s time for your scheduled aquarium feeding ($aquariumName).'
-        : 'It\'s time for your scheduled aquarium feeding.';
+        ? 'It is time to feed your aquarium fish ($aquariumName).'
+        : 'It is time to feed your aquarium fish.';
     await _scheduleNotification(
       id: id,
-      title: '🐟 Time to feed your fish',
+      title: 'AquaIntel – Feeding Reminder',
       body: body,
       scheduledAt: scheduledAt,
       soundEnabled: soundEnabled,
-      payload: 'feeding_$id',
+      payload: reminderId != null ? 'reminder_$reminderId' : 'feeding_$id',
     );
   }
 
-  /// Schedules a water-change reminder notification.
+  @override
   Future<void> scheduleWaterChangeReminder({
     required int id,
     required String aquariumName,
     required DateTime scheduledAt,
     required bool soundEnabled,
+    String? reminderId,
   }) async {
     final body = aquariumName.isNotEmpty
-        ? 'It\'s time for your scheduled aquarium water change ($aquariumName).'
-        : 'It\'s time for your scheduled aquarium water change.';
+        ? 'It is time for your scheduled aquarium water change ($aquariumName).'
+        : 'It is time for your scheduled aquarium water change.';
     await _scheduleNotification(
       id: id,
-      title: '💧 Water change reminder',
+      title: 'AquaIntel – Water Change Reminder',
       body: body,
       scheduledAt: scheduledAt,
       soundEnabled: soundEnabled,
-      payload: 'waterChange_$id',
+      payload: reminderId != null ? 'reminder_$reminderId' : 'waterChange_$id',
     );
   }
 
-  /// Schedules a generic reminder notification (filter cleaning, medication, etc.).
+  @override
   Future<void> scheduleGenericReminder({
     required int id,
     required String title,
     required String body,
     required DateTime scheduledAt,
     required bool soundEnabled,
+    String? reminderId,
   }) async {
+    final displayTitle =
+        title.startsWith('AquaIntel') ? title : 'AquaIntel – $title';
     await _scheduleNotification(
       id: id,
-      title: title,
+      title: displayTitle,
       body: body,
       scheduledAt: scheduledAt,
       soundEnabled: soundEnabled,
-      payload: 'reminder_$id',
+      payload: reminderId != null ? 'reminder_$reminderId' : 'reminder_$id',
+    );
+  }
+
+  /// High-level method to schedule an Android local notification directly
+  /// from a [ReminderModel]. Respects completion, schedule time, and toggle.
+  @override
+  Future<void> scheduleReminder(
+    ReminderModel reminder, {
+    bool soundEnabled = true,
+  }) async {
+    if (!reminder.notificationEnabled) {
+      debugPrint('NotificationService: reminder "${reminder.title}" notifications disabled');
+      return;
+    }
+    if (reminder.isCompleted) {
+      debugPrint('NotificationService: reminder "${reminder.title}" already completed');
+      return;
+    }
+    if (reminder.scheduledDateTime.isBefore(DateTime.now())) {
+      debugPrint('NotificationService: reminder "${reminder.title}" scheduled time is past');
+      return;
+    }
+
+    final String rawTitle = reminder.title.isNotEmpty
+        ? reminder.title
+        : '${reminder.type.label} Reminder';
+    final String displayTitle = rawTitle.startsWith('AquaIntel')
+        ? rawTitle
+        : 'AquaIntel – $rawTitle';
+
+    final String body = reminder.description.isNotEmpty
+        ? reminder.description
+        : (reminder.type == ReminderType.feeding
+            ? 'It is time to feed your aquarium fish.'
+            : (reminder.type == ReminderType.waterChange
+                ? 'It is time for your scheduled aquarium water change.'
+                : 'It is time for your scheduled ${reminder.type.label.toLowerCase()}.'));
+
+    await _scheduleNotification(
+      id: reminder.notificationId,
+      title: displayTitle,
+      body: body,
+      scheduledAt: reminder.scheduledDateTime,
+      soundEnabled: soundEnabled,
+      payload: 'reminder_${reminder.id ?? reminder.notificationId}',
     );
   }
 
@@ -240,6 +349,7 @@ class NotificationService {
 
   // ─── Cancellation ────────────────────────────────────────
 
+  @override
   Future<void> cancelNotification(int id) async {
     await _plugin.cancel(id);
     debugPrint('NotificationService: cancelled id=$id');
@@ -249,6 +359,7 @@ class NotificationService {
 
   Future<void> cancelWaterChangeReminder(int id) => cancelNotification(id);
 
+  @override
   Future<void> cancelAllNotifications() async {
     await _plugin.cancelAll();
     debugPrint('NotificationService: cancelled ALL notifications');

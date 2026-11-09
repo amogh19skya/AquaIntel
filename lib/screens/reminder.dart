@@ -1,12 +1,24 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/reminder_model.dart';
 import '../services/reminder_service.dart';
 import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
 import 'reminder_form.dart';
+import 'notifications/notification_centre_screen.dart';
+
+enum ReminderFilterTab {
+  all,
+  upcoming,
+  overdue,
+  completed,
+}
 
 class ReminderScreen extends StatefulWidget {
-  const ReminderScreen({super.key});
+  /// Optional reminder ID to highlight when navigated from a notification.
+  final String? highlightReminderId;
+
+  const ReminderScreen({super.key, this.highlightReminderId});
 
   @override
   State<ReminderScreen> createState() => _ReminderScreenState();
@@ -14,17 +26,25 @@ class ReminderScreen extends StatefulWidget {
 
 class _ReminderScreenState extends State<ReminderScreen>
     with SingleTickerProviderStateMixin {
-  static const Color backgroundColor = Color(0xFF0D2D47);
-  static const Color topColor = Color(0xFF205779);
-  static const Color cardColor = Color(0xFF1C4667);
-  static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color textBlue = Color(0xFF70A9CC);
+  static const Color backgroundColor = AquaColors.bg;
+  static const Color cardColor = AquaColors.card;
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color textBlue = AquaColors.textSecondary;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
-  final _reminderService = ReminderService();
-  final _notificationService = NotificationService();
+  final IReminderService _reminderService;
+  final INotificationService _notificationService;
+
+  ReminderFilterTab _activeFilter = ReminderFilterTab.all;
+  bool _didCheckHighlight = false;
+
+  _ReminderScreenState({
+    IReminderService? reminderService,
+    INotificationService? notificationService,
+  })  : _reminderService = reminderService ?? ReminderService(),
+        _notificationService = notificationService ?? NotificationService();
 
   @override
   void initState() {
@@ -52,7 +72,7 @@ class _ReminderScreenState extends State<ReminderScreen>
       case ReminderType.waterChange:
         return Icons.water_drop;
       case ReminderType.filterCleaning:
-        return Icons.settings;
+        return Icons.tune;
       case ReminderType.tankCleaning:
         return Icons.cleaning_services;
       case ReminderType.medication:
@@ -89,10 +109,22 @@ class _ReminderScreenState extends State<ReminderScreen>
     try {
       final newValue = !reminder.isCompleted;
       await _reminderService.toggleReminderCompleted(reminder.id!, newValue);
-      // Cancel notification if marking complete
+
       if (newValue) {
+        // Cancel notification when completing
         await _notificationService.cancelNotification(reminder.notificationId);
+      } else {
+        // Re-schedule notification if un-completing and date is in future
+        if (reminder.scheduledDateTime.isAfter(DateTime.now())) {
+          await _notificationService.scheduleReminder(reminder);
+        }
       }
+
+      if (!mounted) return;
+      _showSnack(
+        newValue ? 'Reminder marked as completed! ✅' : 'Reminder restored to pending',
+        isSuccess: newValue,
+      );
     } catch (_) {
       if (!mounted) return;
       _showSnack('Failed to update reminder');
@@ -105,25 +137,33 @@ class _ReminderScreenState extends State<ReminderScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Reminder',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Delete Reminder',
+          style: TextStyle(
+            color: AquaColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: Text(
-          'Delete "${reminder.title}"?',
-          style: TextStyle(color: textBlue.withValues(alpha: 0.8)),
+          'Permanently delete "${reminder.title}"?\nThis action cannot be undone.',
+          style: const TextStyle(color: AquaColors.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
-                style: TextStyle(color: textBlue.withValues(alpha: 0.6))),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AquaColors.textMuted),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF5350),
+              backgroundColor: AquaColors.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Delete'),
           ),
@@ -137,7 +177,7 @@ class _ReminderScreenState extends State<ReminderScreen>
       await _notificationService.cancelNotification(reminder.notificationId);
       await _reminderService.deleteReminder(reminder.id!);
       if (!mounted) return;
-      _showSnack('Reminder deleted', isSuccess: true);
+      _showSnack('Reminder permanently deleted', isSuccess: true);
     } catch (_) {
       if (!mounted) return;
       _showSnack('Failed to delete reminder');
@@ -145,15 +185,12 @@ class _ReminderScreenState extends State<ReminderScreen>
   }
 
   Future<void> _openForm({ReminderModel? reminder}) async {
-    final result = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => ReminderFormScreen(existingReminder: reminder),
       ),
     );
-    if (result == true) {
-      // Stream auto-refreshes; nothing needed
-    }
   }
 
   void _showSnack(String msg, {bool isSuccess = false}) {
@@ -161,8 +198,8 @@ class _ReminderScreenState extends State<ReminderScreen>
       SnackBar(
         content: Text(msg),
         backgroundColor: isSuccess
-            ? const Color(0xFF4CD964).withValues(alpha: 0.9)
-            : cardColor,
+            ? AquaColors.success.withValues(alpha: 0.95)
+            : AquaColors.cardElevated,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -184,27 +221,18 @@ class _ReminderScreenState extends State<ReminderScreen>
           opacity: _fadeAnim,
           child: Stack(
             children: [
-              // Top gradient
+              // Top subtle header background
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
                 child: Container(
-                  height: 220,
+                  height: 180,
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        topColor,
-                        Color(0xFF174A6A),
-                        backgroundColor,
-                      ],
-                      stops: [0.0, 0.7, 1.0],
-                    ),
+                    color: AquaColors.bgSecondary,
                     borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(30),
-                      bottomRight: Radius.circular(30),
+                      bottomLeft: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
                     ),
                   ),
                 ),
@@ -219,22 +247,28 @@ class _ReminderScreenState extends State<ReminderScreen>
                   }
 
                   final reminders = snapshot.data ?? [];
-                  final now = DateTime.now();
-                  // Upcoming: not completed and in future (or today)
-                  final upcoming = reminders
-                      .where((r) =>
-                          !r.isCompleted &&
-                          r.scheduledDateTime.isAfter(now.subtract(const Duration(seconds: 1))))
-                      .toList();
-                  // Urgent: due within next 24 hours and not completed
-                  final urgent = upcoming
-                      .where((r) =>
-                          r.scheduledDateTime
-                              .isBefore(now.add(const Duration(hours: 24))))
-                      .toList();
-                  final normal = upcoming
-                      .where((r) => !urgent.contains(r))
-                      .toList();
+
+                  // Handle highlight reminder from notification
+                  if (snapshot.hasData &&
+                      !_didCheckHighlight &&
+                      widget.highlightReminderId != null) {
+                    _didCheckHighlight = true;
+                    final match = reminders.cast<ReminderModel?>().firstWhere(
+                          (r) => r?.id == widget.highlightReminderId,
+                          orElse: () => null,
+                        );
+                    if (match == null) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          _showSnack('The selected reminder was deleted or not found.');
+                        }
+                      });
+                    }
+                  }
+
+                  // Categorize by status
+                  final overdue = reminders.where((r) => r.isOverdue).toList();
+                  final upcoming = reminders.where((r) => r.isPending).toList();
                   final completed = reminders.where((r) => r.isCompleted).toList();
 
                   return CustomScrollView(
@@ -246,7 +280,7 @@ class _ReminderScreenState extends State<ReminderScreen>
                       // Header
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -282,6 +316,42 @@ class _ReminderScreenState extends State<ReminderScreen>
                         ),
                       ),
 
+                      // Filter Chips Bar
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildFilterChip(
+                                  label: 'All (${reminders.length})',
+                                  tab: ReminderFilterTab.all,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label: 'Upcoming (${upcoming.length})',
+                                  tab: ReminderFilterTab.upcoming,
+                                  color: primaryBlue,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label: 'Overdue (${overdue.length})',
+                                  tab: ReminderFilterTab.overdue,
+                                  color: AquaColors.error,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label: 'Completed (${completed.length})',
+                                  tab: ReminderFilterTab.completed,
+                                  color: AquaColors.success,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
                       // Loading indicator
                       if (snapshot.connectionState == ConnectionState.waiting &&
                           snapshot.data == null)
@@ -295,29 +365,11 @@ class _ReminderScreenState extends State<ReminderScreen>
                         )
                       else if (reminders.isEmpty)
                         _buildEmptyState()
-                      else ...[
-                        // Urgent Tasks
-                        if (urgent.isNotEmpty) ...[
-                          _buildSectionHeader(
-                            'Urgent (${urgent.length})',
-                            const Color(0xFFFF9800),
-                          ),
-                          _buildReminderList(urgent),
-                        ],
-
-                        // Upcoming Tasks
-                        if (normal.isNotEmpty) ...[
-                          _buildSectionHeader('Upcoming (${normal.length})', primaryBlue),
-                          _buildReminderList(normal),
-                        ],
-
-                        // Completed
-                        if (completed.isNotEmpty) ...[
-                          _buildSectionHeader('Completed (${completed.length})',
-                              const Color(0xFF66BB6A)),
-                          _buildReminderList(completed),
-                        ],
-                      ],
+                      else ..._buildFilteredSections(
+                          overdue: overdue,
+                          upcoming: upcoming,
+                          completed: completed,
+                        ),
 
                       const SliverToBoxAdapter(child: SizedBox(height: 100)),
                     ],
@@ -335,16 +387,12 @@ class _ReminderScreenState extends State<ReminderScreen>
         height: 56,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF29A8DF), Color(0xFF1B8FC4)],
-          ),
+          color: primaryBlue,
           boxShadow: [
             BoxShadow(
-              color: primaryBlue.withValues(alpha: 0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+              color: primaryBlue.withValues(alpha: 0.35),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
@@ -403,19 +451,126 @@ class _ReminderScreenState extends State<ReminderScreen>
             ),
           ),
           const Spacer(),
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: cardColor.withValues(alpha: 0.6),
-              shape: BoxShape.circle,
-              border: Border.all(color: primaryBlue.withValues(alpha: 0.15), width: 1),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const NotificationCentreScreen()),
+              );
+            },
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: cardColor.withValues(alpha: 0.6),
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: primaryBlue.withValues(alpha: 0.15), width: 1),
+              ),
+              child: const Icon(Icons.notifications_outlined,
+                  color: textBlue, size: 20),
             ),
-            child: const Icon(Icons.notifications_outlined, color: textBlue, size: 20),
           ),
         ],
       ),
     );
+  }
+
+  // ─── Filter Chip ──────────────────────────────────────────
+
+  Widget _buildFilterChip({
+    required String label,
+    required ReminderFilterTab tab,
+    Color? color,
+  }) {
+    final isSelected = _activeFilter == tab;
+    final activeColor = color ?? primaryBlue;
+
+    return GestureDetector(
+      onTap: () => setState(() => _activeFilter = tab),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? activeColor.withValues(alpha: 0.2)
+              : cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? activeColor
+                : AquaColors.border,
+            width: isSelected ? 1.4 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? activeColor : AquaColors.textSecondary,
+            fontSize: 12.5,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Sections Builder ─────────────────────────────────────
+
+  List<Widget> _buildFilteredSections({
+    required List<ReminderModel> overdue,
+    required List<ReminderModel> upcoming,
+    required List<ReminderModel> completed,
+  }) {
+    final widgets = <Widget>[];
+
+    // Filter: Overdue only
+    if (_activeFilter == ReminderFilterTab.overdue) {
+      if (overdue.isEmpty) {
+        return [_buildFilteredEmptyState('No overdue reminders! Your tank is on track. 🐠')];
+      }
+      widgets.add(_buildSectionHeader('Overdue Tasks (${overdue.length})', AquaColors.error));
+      widgets.add(_buildReminderList(overdue));
+      return widgets;
+    }
+
+    // Filter: Upcoming only
+    if (_activeFilter == ReminderFilterTab.upcoming) {
+      if (upcoming.isEmpty) {
+        return [_buildFilteredEmptyState('No upcoming reminders scheduled.')];
+      }
+      widgets.add(_buildSectionHeader('Upcoming Tasks (${upcoming.length})', primaryBlue));
+      widgets.add(_buildReminderList(upcoming));
+      return widgets;
+    }
+
+    // Filter: Completed only
+    if (_activeFilter == ReminderFilterTab.completed) {
+      if (completed.isEmpty) {
+        return [_buildFilteredEmptyState('No completed reminders yet.')];
+      }
+      widgets.add(_buildSectionHeader('Completed History (${completed.length})', AquaColors.success));
+      widgets.add(_buildReminderList(completed));
+      return widgets;
+    }
+
+    // Filter: All (Display Overdue, Upcoming, Completed in 3 distinct sections)
+    if (overdue.isNotEmpty) {
+      widgets.add(_buildSectionHeader('Overdue (${overdue.length})', AquaColors.error));
+      widgets.add(_buildReminderList(overdue));
+    }
+
+    if (upcoming.isNotEmpty) {
+      widgets.add(_buildSectionHeader('Upcoming (${upcoming.length})', primaryBlue));
+      widgets.add(_buildReminderList(upcoming));
+    }
+
+    if (completed.isNotEmpty) {
+      widgets.add(_buildSectionHeader('Completed (${completed.length})', AquaColors.success));
+      widgets.add(_buildReminderList(completed));
+    }
+
+    return widgets;
   }
 
   // ─── Section Header ──────────────────────────────────────
@@ -423,21 +578,23 @@ class _ReminderScreenState extends State<ReminderScreen>
   SliverToBoxAdapter _buildSectionHeader(String label, Color color) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
         child: Row(
           children: [
             Container(
               width: 4,
-              height: 20,
-              decoration:
-                  BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+              height: 18,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -470,11 +627,22 @@ class _ReminderScreenState extends State<ReminderScreen>
 
   Widget _buildTaskCard(ReminderModel reminder) {
     final completed = reminder.isCompleted;
+    final isOverdue = reminder.isOverdue;
+    final isHighlighted = widget.highlightReminderId != null &&
+        reminder.id == widget.highlightReminderId;
     final color = _colorForType(reminder.type);
     final icon = _iconForType(reminder.type);
-    final isUrgent = !completed &&
-        reminder.scheduledDateTime
-            .isBefore(DateTime.now().add(const Duration(hours: 24)));
+
+    Color borderColor;
+    if (isHighlighted) {
+      borderColor = AquaColors.accent;
+    } else if (completed) {
+      borderColor = AquaColors.border;
+    } else if (isOverdue) {
+      borderColor = AquaColors.error.withValues(alpha: 0.45);
+    } else {
+      borderColor = primaryBlue.withValues(alpha: 0.2);
+    }
 
     return Dismissible(
       key: ValueKey(reminder.id),
@@ -483,7 +651,7 @@ class _ReminderScreenState extends State<ReminderScreen>
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: const Color(0xFFEF5350).withValues(alpha: 0.8),
+          color: AquaColors.error.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Icon(Icons.delete_outline, color: Colors.white, size: 26),
@@ -492,23 +660,23 @@ class _ReminderScreenState extends State<ReminderScreen>
         await _deleteReminder(reminder);
         return false; // Stream update handles UI refresh
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+      child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: completed ? cardColor.withValues(alpha: 0.5) : cardColor,
+          color: isHighlighted
+              ? AquaColors.cardElevated
+              : (completed ? cardColor.withValues(alpha: 0.6) : cardColor),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isUrgent && !completed
-                ? const Color(0xFFFF9800).withValues(alpha: 0.25)
-                : primaryBlue.withValues(alpha: 0.1),
-            width: 1,
+            color: borderColor,
+            width: isHighlighted ? 2.0 : (isOverdue ? 1.4 : 1.0),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 10,
+              color: isHighlighted
+                  ? AquaColors.accent.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.12),
+              blurRadius: isHighlighted ? 14 : 10,
               offset: const Offset(0, 4),
             ),
           ],
@@ -521,13 +689,17 @@ class _ReminderScreenState extends State<ReminderScreen>
               height: 44,
               decoration: BoxDecoration(
                 color: completed
-                    ? color.withValues(alpha: 0.1)
-                    : color.withValues(alpha: 0.2),
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : (isOverdue
+                        ? AquaColors.error.withValues(alpha: 0.15)
+                        : color.withValues(alpha: 0.18)),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
-                color: completed ? color.withValues(alpha: 0.4) : color,
+                color: completed
+                    ? AquaColors.textMuted
+                    : (isOverdue ? AquaColors.error : color),
                 size: 22,
               ),
             ),
@@ -538,12 +710,82 @@ class _ReminderScreenState extends State<ReminderScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Badges: Status + Category + Highlight
+                  Row(
+                    children: [
+                      // Status Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: completed
+                              ? AquaColors.success.withValues(alpha: 0.15)
+                              : (isOverdue
+                                  ? AquaColors.error.withValues(alpha: 0.15)
+                                  : primaryBlue.withValues(alpha: 0.15)),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          reminder.status.label.toUpperCase(),
+                          style: TextStyle(
+                            color: completed
+                                ? AquaColors.success
+                                : (isOverdue
+                                    ? AquaColors.error
+                                    : primaryBlue),
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // Category Tag
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          reminder.type.label,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (isHighlighted) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AquaColors.accent,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'SELECTED',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+
+                  // Title
                   Text(
                     reminder.title,
                     style: TextStyle(
                       color: completed
-                          ? Colors.white.withValues(alpha: 0.5)
-                          : Colors.white,
+                          ? AquaColors.textMuted
+                          : AquaColors.textPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       decoration: completed
@@ -555,21 +797,30 @@ class _ReminderScreenState extends State<ReminderScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 3),
+
                   if (reminder.aquariumName.isNotEmpty)
-                    Text(
-                      reminder.aquariumName,
-                      style: TextStyle(
-                        color: primaryBlue.withValues(alpha: 0.7),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Text(
+                        reminder.aquariumName,
+                        style: TextStyle(
+                          color: primaryBlue.withValues(alpha: 0.8),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  const SizedBox(height: 2),
+
+                  // Scheduled Date / Overdue Date
                   Row(
                     children: [
                       Icon(
-                        Icons.access_time,
-                        color: textBlue.withValues(alpha: 0.6),
+                        isOverdue
+                            ? Icons.warning_amber_rounded
+                            : Icons.access_time,
+                        color: isOverdue ? AquaColors.error : textBlue.withValues(alpha: 0.6),
                         size: 13,
                       ),
                       const SizedBox(width: 4),
@@ -577,56 +828,75 @@ class _ReminderScreenState extends State<ReminderScreen>
                         DateFormat('MMM dd, hh:mm a')
                             .format(reminder.scheduledDateTime),
                         style: TextStyle(
-                          color: textBlue.withValues(alpha: 0.7),
+                          color: isOverdue
+                              ? AquaColors.error
+                              : textBlue.withValues(alpha: 0.7),
                           fontSize: 12,
+                          fontWeight: isOverdue
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                     ],
                   ),
+
+                  // Completed timestamp if completed
+                  if (completed && reminder.completedAt != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Completed: ${DateFormat('MMM dd, hh:mm a').format(reminder.completedAt!)}',
+                      style: const TextStyle(
+                        color: AquaColors.success,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
 
-            // Edit button
+            // Edit button (for pending & overdue)
             if (!completed)
               GestureDetector(
                 onTap: () => _openForm(reminder: reminder),
                 child: Container(
                   width: 32,
                   height: 32,
-                  margin: const EdgeInsets.only(right: 8),
+                  margin: const EdgeInsets.only(right: 6),
                   decoration: BoxDecoration(
                     color: primaryBlue.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.edit_outlined,
-                    color: primaryBlue.withValues(alpha: 0.8),
+                    color: primaryBlue.withValues(alpha: 0.85),
                     size: 16,
                   ),
                 ),
               ),
 
-            // Complete toggle
+            // Complete toggle button
             GestureDetector(
               onTap: () => _toggleCompleted(reminder),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
-                width: 30,
-                height: 30,
+                width: 32,
+                height: 32,
+                margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: completed ? primaryBlue : Colors.transparent,
+                  color: completed ? AquaColors.success : Colors.transparent,
                   border: Border.all(
                     color: completed
-                        ? primaryBlue
-                        : textBlue.withValues(alpha: 0.4),
+                        ? AquaColors.success
+                        : (isOverdue ? AquaColors.error : textBlue.withValues(alpha: 0.5)),
                     width: 2,
                   ),
                   boxShadow: completed
                       ? [
                           BoxShadow(
-                            color: primaryBlue.withValues(alpha: 0.3),
+                            color: AquaColors.success.withValues(alpha: 0.35),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -638,13 +908,31 @@ class _ReminderScreenState extends State<ReminderScreen>
                     : null,
               ),
             ),
+
+            // Delete button
+            GestureDetector(
+              onTap: () => _deleteReminder(reminder),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AquaColors.cardElevated,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AquaColors.textMuted,
+                  size: 18,
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ─── Empty State ─────────────────────────────────────────
+  // ─── Empty States ─────────────────────────────────────────
 
   SliverToBoxAdapter _buildEmptyState() {
     return SliverToBoxAdapter(
@@ -656,18 +944,19 @@ class _ReminderScreenState extends State<ReminderScreen>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: primaryBlue.withValues(alpha: 0.1),
+                color: cardColor,
                 shape: BoxShape.circle,
+                border: Border.all(color: AquaColors.border),
               ),
-              child: Icon(
-                Icons.alarm_add_outlined,
-                color: primaryBlue.withValues(alpha: 0.6),
+              child: const Icon(
+                Icons.event_note_outlined,
+                color: AquaColors.textMuted,
                 size: 40,
               ),
             ),
             const SizedBox(height: 20),
             const Text(
-              'No reminders yet',
+              'No Reminders Yet',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -675,13 +964,23 @@ class _ReminderScreenState extends State<ReminderScreen>
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Tap the + button to create your\nfirst aquarium reminder.',
+            const Text(
+              'Schedule feedings, water changes, and filter cleanings\nto keep your aquariums healthy.',
+              style: TextStyle(color: textBlue, fontSize: 14),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: textBlue.withValues(alpha: 0.7),
-                fontSize: 14,
-                height: 1.5,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _openForm(),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add First Reminder'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
             ),
           ],
@@ -690,30 +989,54 @@ class _ReminderScreenState extends State<ReminderScreen>
     );
   }
 
-  // ─── Error State ─────────────────────────────────────────
+  SliverToBoxAdapter _buildFilteredEmptyState(String message) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
+        child: Column(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: cardColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: AquaColors.border),
+              ),
+              child: const Icon(
+                Icons.check_circle_outline,
+                color: AquaColors.textMuted,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: const TextStyle(
+                color: AquaColors.textSecondary,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildError(String error) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, color: Color(0xFFEF5350), size: 48),
+            const Icon(Icons.error_outline, color: AquaColors.error, size: 48),
             const SizedBox(height: 16),
-            const Text(
-              'Failed to load reminders',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
             Text(
-              'Please check your internet connection.',
+              'Failed to load reminders: $error',
+              style: const TextStyle(color: Colors.white),
               textAlign: TextAlign.center,
-              style: TextStyle(color: textBlue.withValues(alpha: 0.7), fontSize: 14),
             ),
           ],
         ),

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/fish.dart';
 import '../models/compatibility_result.dart';
 import '../services/fish_service.dart';
 import '../services/compatibility_service.dart';
+import '../services/compatibility_seeder.dart';
+import '../theme/app_theme.dart';
 import '../widgets/compatibility_header.dart';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -22,16 +26,22 @@ class CompatibilityCheckerScreen extends StatefulWidget {
 class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
     with TickerProviderStateMixin {
   // ─── AquaIntel Color Palette ───
-  static const Color backgroundColor = Color(0xFF0D2D47);
-  static const Color topColor = Color(0xFF205779);
-  static const Color cardColor = Color(0xFF1C4667);
-  static const Color inputColor = Color(0xFF163B5A);
-  static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color textBlue = Color(0xFF70A9CC);
+  static const Color backgroundColor = AquaColors.bg;
+  static const Color topColor = AquaColors.bgSecondary;
+  static const Color cardColor = AquaColors.card;
+  static const Color inputColor = AquaColors.input;
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color textBlue = AquaColors.textSecondary;
 
-  // ─── Services ───
-  final FishService _fishService = FishService();
-  final CompatibilityService _compatibilityService = CompatibilityService();
+  // ─── Services (DIP abstractions) ───
+  final IFishService _fishService;
+  final ICompatibilityService _compatibilityService;
+
+  _CompatibilityCheckerScreenState({
+    IFishService? fishService,
+    ICompatibilityService? compatibilityService,
+  })  : _fishService = fishService ?? FishService(),
+        _compatibilityService = compatibilityService ?? CompatibilityService();
 
   // ─── State: fish list ───
   List<Fish> _fishList = [];
@@ -276,7 +286,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                       end: Alignment.bottomCenter,
                       colors: [
                         topColor,
-                        Color(0xFF174A6A),
+                        AquaColors.bgSecondary,
                         backgroundColor,
                       ],
                       stops: [0.0, 0.65, 1.0],
@@ -468,6 +478,20 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
           ),
         ),
         actions: [
+          if (kDebugMode)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showSeederDialog();
+              },
+              child: const Text(
+                'Admin Seeder',
+                style: TextStyle(
+                  color: Colors.amber,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
@@ -479,6 +503,17 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showSeederDialog() {
+    final user = FirebaseAuth.instance.currentUser;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => _SeederDialogContent(
+        user: user,
       ),
     );
   }
@@ -1260,9 +1295,9 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
 // ═══════════════════════════════════════════════════════════════════
 
 class _FishLoadingIndicator extends StatelessWidget {
-  static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color cardColor = Color(0xFF1C4667);
-  static const Color textBlue = Color(0xFF70A9CC);
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color cardColor = AquaColors.card;
+  static const Color textBlue = AquaColors.textSecondary;
 
   const _FishLoadingIndicator();
 
@@ -1276,7 +1311,7 @@ class _FishLoadingIndicator extends StatelessWidget {
           color: cardColor,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: primaryBlue.withValues(alpha: 0.1),
+            color: AquaColors.border,
             width: 1,
           ),
         ),
@@ -1313,9 +1348,9 @@ class _FishErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color cardColor = Color(0xFF1C4667);
-  static const Color textBlue = Color(0xFF70A9CC);
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color cardColor = AquaColors.card;
+  static const Color textBlue = AquaColors.textSecondary;
 
   const _FishErrorView({required this.message, required this.onRetry});
 
@@ -1403,11 +1438,11 @@ class _FishSelectionSheet extends StatefulWidget {
 }
 
 class _FishSelectionSheetState extends State<_FishSelectionSheet> {
-  static const Color backgroundColor = Color(0xFF0D2D47);
-  static const Color cardColor = Color(0xFF1C4667);
-  static const Color inputColor = Color(0xFF163B5A);
-  static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color textBlue = Color(0xFF70A9CC);
+  static const Color backgroundColor = AquaColors.bg;
+  static const Color cardColor = AquaColors.card;
+  static const Color inputColor = AquaColors.input;
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color textBlue = AquaColors.textSecondary;
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -1783,3 +1818,341 @@ class _FishSelectionSheetState extends State<_FishSelectionSheet> {
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// TEMPORARY ADMIN SEEDER DIALOG (2-Stage: Dry-Run then Confirmation)
+// ═══════════════════════════════════════════════════════════════════
+
+class _SeederDialogContent extends StatefulWidget {
+  final User? user;
+
+  const _SeederDialogContent({required this.user});
+
+  @override
+  State<_SeederDialogContent> createState() => _SeederDialogContentState();
+}
+
+class _SeederDialogContentState extends State<_SeederDialogContent> {
+  static const Color cardColor = AquaColors.card;
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color textBlue = AquaColors.textSecondary;
+
+  bool _isLoading = false;
+  String _statusMessage = '';
+  SeedReport? _dryRunReport;
+  SeedReport? _liveSeedReport;
+
+  Future<void> _runDryRun() async {
+    setState(() {
+      _isLoading = true;
+      _statusMessage = 'Running authenticated dry run against Firestore...';
+      _dryRunReport = null;
+      _liveSeedReport = null;
+    });
+
+    try {
+      final seeder = CompatibilitySeeder();
+      final report = await seeder.dryRun(inspectFirestore: true);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _dryRunReport = report;
+          _statusMessage = '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = 'Dry run failed: $e';
+        });
+      }
+    }
+  }
+
+  Future<void> _confirmAndSeed() async {
+    final missingCount = _dryRunReport?.missing.length ?? 28;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Confirm Firestore Write',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Are you sure you want to write $missingCount missing compatibility documents to project "aquaintel-36924"?\n\n'
+          '• Existing documents: Preserved without overwrite\n'
+          '• Fish collection: Untouched\n'
+          '• Security rules: Unchanged',
+          style: const TextStyle(color: textBlue, height: 1.5, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: primaryBlue),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm & Write', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+      _statusMessage = 'Seeding missing documents to Firestore...';
+    });
+
+    try {
+      final seeder = CompatibilitySeeder();
+      final report = await seeder.seedCompatibilityPairs(
+        allowExecution: true,
+        overwriteExisting: false,
+        isDryRun: false,
+      );
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _liveSeedReport = report;
+          _statusMessage = '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = 'Seeding failed: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = widget.user;
+
+    return AlertDialog(
+      backgroundColor: cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: primaryBlue.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.shield_outlined, color: primaryBlue, size: 20),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'Compatibility Seeder',
+            style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // User Status
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: user != null
+                      ? const Color(0xFF66BB6A).withValues(alpha: 0.12)
+                      : const Color(0xFFEF5350).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: user != null
+                        ? const Color(0xFF66BB6A).withValues(alpha: 0.3)
+                        : const Color(0xFFEF5350).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      user != null ? Icons.verified_user_rounded : Icons.lock_outline_rounded,
+                      color: user != null ? const Color(0xFF66BB6A) : const Color(0xFFEF5350),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        user != null
+                            ? 'Authenticated as:\n${user.email}'
+                            : 'Not Authenticated. Please sign in to AquaIntel before running.',
+                        style: TextStyle(
+                          color: user != null ? const Color(0xFF66BB6A) : const Color(0xFFEF5350),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              if (_isLoading) ...[
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
+                      children: [
+                        const CircularProgressIndicator(color: primaryBlue, strokeWidth: 3),
+                        const SizedBox(height: 12),
+                        Text(_statusMessage, style: const TextStyle(color: textBlue, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Dry Run Section
+                if (_dryRunReport != null) ...[
+                  _buildReportSection(
+                    title: 'Dry-Run Verification Results',
+                    report: _dryRunReport!,
+                    isDryRun: true,
+                  ),
+                ],
+
+                // Live Seed Section
+                if (_liveSeedReport != null) ...[
+                  _buildReportSection(
+                    title: 'Live Seeding Results',
+                    report: _liveSeedReport!,
+                    isDryRun: false,
+                  ),
+                ],
+
+                if (_statusMessage.isNotEmpty) ...[
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF5350).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _statusMessage,
+                      style: const TextStyle(color: Color(0xFFEF5350), fontSize: 12),
+                    ),
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: const Text('Close', style: TextStyle(color: Colors.grey)),
+        ),
+        if (user != null && !_isLoading && _liveSeedReport == null) ...[
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: primaryBlue),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: _runDryRun,
+            child: const Text('1. Run Dry-Run', style: TextStyle(color: primaryBlue)),
+          ),
+          if (_dryRunReport != null && _dryRunReport!.errors.isEmpty && _dryRunReport!.missing.isNotEmpty) ...[
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF66BB6A),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: _confirmAndSeed,
+              child: Text(
+                '2. Seed (${_dryRunReport!.missing.length})',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReportSection({
+    required String title,
+    required SeedReport report,
+    required bool isDryRun,
+  }) {
+    final hasErrors = report.errors.isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AquaColors.input,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: primaryBlue.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 8),
+          _row('Total Expected Pairs', '${report.total}'),
+          if (isDryRun) ...[
+            _row('Existing in Firestore', '${report.skipped.length}'),
+            _row('Missing / To Create', '${report.missing.length}', color: const Color(0xFFFF9800)),
+          ] else ...[
+            _row('Successfully Created', '${report.created.length}', color: const Color(0xFF66BB6A)),
+            _row('Skipped (Already existed)', '${report.skipped.length}'),
+            _row('Failed', '${report.failed.length}', color: report.failed.isNotEmpty ? const Color(0xFFEF5350) : null),
+          ],
+          if (hasErrors) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF5350).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Errors detected:', style: TextStyle(color: Color(0xFFEF5350), fontWeight: FontWeight.bold, fontSize: 11)),
+                  const SizedBox(height: 4),
+                  ...report.errors.entries.take(3).map(
+                    (e) => Text('• ${e.key}: ${e.value}', style: const TextStyle(color: textBlue, fontSize: 11)),
+                  ),
+                  if (report.errors.length > 3)
+                    Text('...and ${report.errors.length - 3} more errors', style: const TextStyle(color: textBlue, fontSize: 10)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, String value, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: textBlue, fontSize: 12)),
+          Text(value, style: TextStyle(color: color ?? Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+

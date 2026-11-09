@@ -1,29 +1,13 @@
 import 'package:flutter/material.dart';
 import 'aqua_fab.dart';
+import '../theme/app_theme.dart';
 
-/// Reusable AquaIntel bottom navigation bar **with** the centered FAB.
+/// Reusable AquaIntel bottom navigation bar with the centered FAB.
 ///
-/// The bar renders a single row containing four nav items
-/// (Maintenance, Dashboard, Library, Settings) with an [AquaFab]
-/// centered between Dashboard and Library.
-///
-/// ```
-/// Maintenance │ Dashboard │  ⊕  │ Library │ Settings
-/// ```
-///
-/// [currentIndex] — the currently selected tab (0‑3).
-/// [onItemSelected] — called when a nav item is tapped.
-/// [onFabPressed] — called when the center FAB is tapped.
-///
-/// This widget contains **no** business logic or direct navigation.
+/// Destinations: Maintenance | Dashboard | ⊕ | Library | Settings
 class AquaBottomNav extends StatelessWidget {
-  /// Index of the currently active tab (0–3).
   final int currentIndex;
-
-  /// Callback when a navigation item is tapped.
   final ValueChanged<int> onItemSelected;
-
-  /// Callback when the center FAB is tapped.
   final VoidCallback onFabPressed;
 
   const AquaBottomNav({
@@ -33,24 +17,18 @@ class AquaBottomNav extends StatelessWidget {
     required this.onFabPressed,
   });
 
-  // ─── AquaIntel colour tokens (matching HomeScreen) ───
-  static const Color _cardColor = Color(0xFF1C4667);
-  static const Color _primaryBlue = Color(0xFF29A8DF);
-  static const Color _textBlue = Color(0xFF70A9CC);
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 70,
+      height: 72,
       decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+        color: AquaColors.bgSecondary,
+        border: const Border(
+          top: BorderSide(color: AquaColors.border, width: 1),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -63,38 +41,44 @@ class AquaBottomNav extends StatelessWidget {
           _buildNavItem(Icons.dashboard_outlined, 'Dashboard', 1),
           // ── Center FAB ──
           AquaFab(onPressed: onFabPressed),
-          _buildNavItem(Icons.menu_book_outlined, 'Library', 2),
+          _buildNavItem(Icons.people_outline, 'Community', 2),
           _buildNavItem(Icons.settings_outlined, 'Settings', 3),
         ],
       ),
     );
   }
 
-  /// Builds a single navigation item (icon + label).
   Widget _buildNavItem(IconData icon, String label, int index) {
     final bool isSelected = currentIndex == index;
     return GestureDetector(
       onTap: () => onItemSelected(index),
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 65,
+        width: 64,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? _primaryBlue
-                  : _textBlue.withValues(alpha: 0.5),
-              size: 24,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AquaColors.accent.withValues(alpha: 0.12)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? AquaColors.accent : AquaColors.textMuted,
+                size: 22,
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
-                color: isSelected
-                    ? _primaryBlue
-                    : _textBlue.withValues(alpha: 0.5),
+                color: isSelected ? AquaColors.accent : AquaColors.textMuted,
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),

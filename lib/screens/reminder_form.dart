@@ -6,6 +6,7 @@ import '../services/reminder_service.dart';
 import '../services/notification_service.dart';
 import '../services/settings_service.dart';
 import '../services/aquarium_service.dart';
+import '../theme/app_theme.dart';
 
 /// Schedule Maintenance form screen.
 /// Supports creating a new reminder or editing an existing one.
@@ -22,13 +23,13 @@ class ReminderFormScreen extends StatefulWidget {
 class _ReminderFormScreenState extends State<ReminderFormScreen>
     with SingleTickerProviderStateMixin {
   // ─── AquaIntel colour palette ───
-  static const Color backgroundColor = Color(0xFF0D2D47);
-  static const Color topColor = Color(0xFF205779);
-  static const Color cardColor = Color(0xFF1C4667);
-  static const Color inputColor = Color(0xFF163B5A);
-  static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color textBlue = Color(0xFF70A9CC);
-  static const Color accentGreen = Color(0xFF4CD964);
+  static const Color backgroundColor = AquaColors.bg;
+  static const Color topColor = AquaColors.bgSecondary;
+  static const Color cardColor = AquaColors.card;
+  static const Color inputColor = AquaColors.input;
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color textBlue = AquaColors.textSecondary;
+  static const Color accentGreen = AquaColors.success;
 
   // ─── Services ───
   final _reminderService = ReminderService();
@@ -188,12 +189,15 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
     }
 
     final now = DateTime.now();
+    final docId = _isEditMode
+        ? widget.existingReminder!.id!
+        : _reminderService.newReminderId();
     final notificationId = _isEditMode
         ? widget.existingReminder!.notificationId
-        : scheduledDT.millisecondsSinceEpoch.remainder(2147483647);
+        : (docId.hashCode.abs() % 2147483647);
 
     final reminder = ReminderModel(
-      id: _isEditMode ? widget.existingReminder!.id : null,
+      id: docId,
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
       type: _selectedType,
@@ -201,6 +205,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
       aquariumName: _selectedAquarium?.name ?? 'My Aquarium',
       scheduledDateTime: scheduledDT,
       isCompleted: false,
+      completedAt: null,
       notificationEnabled: notificationsOn,
       createdAt: _isEditMode ? widget.existingReminder!.createdAt : now,
       updatedAt: now,
@@ -215,7 +220,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
         await _reminderService.updateReminder(reminder);
         debugPrint('REMINDER: updated successfully id=${reminder.id}');
       } else {
-        final docId = await _reminderService.addReminder(reminder);
+        await _reminderService.addReminder(reminder, reminderId: docId);
         debugPrint('REMINDER: saved successfully docId=$docId');
       }
     } catch (e, st) {
@@ -243,6 +248,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
             aquariumName: aquariumName,
             scheduledAt: scheduledDT,
             soundEnabled: soundOn,
+            reminderId: docId,
           );
         } else if (reminder.type == ReminderType.waterChange &&
             waterChangeAlertsOn) {
@@ -251,6 +257,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
             aquariumName: aquariumName,
             scheduledAt: scheduledDT,
             soundEnabled: soundOn,
+            reminderId: docId,
           );
         } else if (reminder.type != ReminderType.feeding &&
             reminder.type != ReminderType.waterChange) {
@@ -261,6 +268,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
             body: _buildNotificationBody(reminder),
             scheduledAt: scheduledDT,
             soundEnabled: soundOn,
+            reminderId: docId,
           );
         } else {
           debugPrint(
@@ -344,7 +352,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [topColor, Color(0xFF174A6A), backgroundColor],
+                      colors: [topColor, AquaColors.bgSecondary, backgroundColor],
                       stops: [0.0, 0.7, 1.0],
                     ),
                     borderRadius: BorderRadius.only(

@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'edit_profile.dart';
+import 'avatar_selection_screen.dart';
+import '../models/user_model.dart';
 import '../routes/app_routes.dart';
 import '../services/settings_service.dart';
 import '../services/notification_service.dart';
+import '../services/user_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/user_avatar.dart';
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({super.key});
@@ -19,12 +24,12 @@ class _SettingScreenState extends State<SettingScreen>
   // AquaIntel colours
   // ─────────────────────────────────────────────
 
-  static const Color backgroundColor = Color(0xFF0D2D47);
-  static const Color surfaceColor = Color(0xFF163B5A);
-  static const Color dividerColor = Color(0xFF28506B);
-  static const Color primaryBlue = Color(0xFF29A8DF);
-  static const Color textSecondary = Color(0xFF8FB3C9);
-  static const Color dangerColor = Color(0xFFEF5350);
+  static const Color backgroundColor = AquaColors.bg;
+  static const Color surfaceColor = AquaColors.card;
+  static const Color dividerColor = AquaColors.border;
+  static const Color primaryBlue = AquaColors.accent;
+  static const Color textSecondary = AquaColors.textSecondary;
+  static const Color dangerColor = AquaColors.error;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -44,9 +49,17 @@ class _SettingScreenState extends State<SettingScreen>
   // Temperature
   int _selectedTempUnit = 0; // 0 = Celsius, 1 = Fahrenheit
 
-  final _settingsService = SettingsService();
+  final ISettingsService _settingsService;
+  final INotificationService _notificationService;
+  final UserService _userService;
 
-  final _notificationService = NotificationService();
+  _SettingScreenState({
+    ISettingsService? settingsService,
+    INotificationService? notificationService,
+    UserService? userService,
+  })  : _settingsService = settingsService ?? SettingsService(),
+        _notificationService = notificationService ?? NotificationService(),
+        _userService = userService ?? UserService();
 
   @override
   void initState() {
@@ -519,19 +532,54 @@ class _SettingScreenState extends State<SettingScreen>
       ),
       child: Row(
         children: [
-          // Simple avatar
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: primaryBlue.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person_outline_rounded,
-              color: primaryBlue,
-              size: 25,
-            ),
+          // Avatar with tap to select/preview
+          StreamBuilder<String>(
+            stream: _userService.currentAvatarIdStream(),
+            builder: (context, snapshot) {
+              final avatarId = snapshot.data ?? UserModel.defaultAvatarId;
+              return GestureDetector(
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AvatarSelectionScreen(
+                        initialAvatarId: avatarId,
+                        userName: _displayName,
+                      ),
+                    ),
+                  );
+                  if (mounted) setState(() {});
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    UserAvatar(
+                      avatarId: avatarId,
+                      size: 48,
+                      showBorder: true,
+                      borderColor: primaryBlue,
+                      borderWidth: 2,
+                    ),
+                    Positioned(
+                      bottom: -2,
+                      right: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: primaryBlue,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.edit,
+                          size: 10,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
 
           const SizedBox(width: 14),
@@ -808,7 +856,7 @@ class _SettingScreenState extends State<SettingScreen>
                 Text(
                   'Choose how temperature is displayed',
                   style: TextStyle(
-                    color: Color(0xFF70A9CC),
+                    color: textSecondary,
                     fontSize: 11,
                   ),
                 ),

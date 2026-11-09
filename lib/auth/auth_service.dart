@@ -1,19 +1,34 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
+/// Interface for authentication operations (DIP).
+abstract class IAuthService {
+  User? get currentUser;
+  Stream<User?> get authStateChanges;
+  Future<UserCredential> registerWithEmailAndPassword({
+    required String name,
+    required String email,
+    required String password,
+  });
+  Future<UserCredential> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  });
+  Future<void> signOut();
+}
+
 /// Reusable authentication service for AquaIntel.
 /// Uses Firebase Authentication with email/password only.
-class AuthService {
+class AuthService implements IAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   /// Current Firebase user (null if not signed in).
+  @override
   User? get currentUser => _auth.currentUser;
 
-  /// Stream of authentication state changes.
-  /// Emits the current [User] when signed in, or null when signed out.
+  @override
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  /// Register a new user with email and password.
-  /// On success, updates the display name and returns the [UserCredential].
+  @override
   Future<UserCredential> registerWithEmailAndPassword({
     required String name,
     required String email,
@@ -36,7 +51,7 @@ class AuthService {
     }
   }
 
-  /// Sign in an existing user with email and password.
+  @override
   Future<UserCredential> signInWithEmailAndPassword({
     required String email,
     required String password,
@@ -51,7 +66,7 @@ class AuthService {
     }
   }
 
-  /// Sign out the current user.
+  @override
   Future<void> signOut() async {
     await _auth.signOut();
   }

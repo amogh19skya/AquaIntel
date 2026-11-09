@@ -1,0 +1,152 @@
+// firestore.rules
+// ═══════════════════════════════════════════════════════════════════════════════
+// AquaIntel — Cloud Firestore Security Rules
+// Project: aquaintel-36924
+//
+// MANUAL STEP REQUIRED:
+//   Copy this entire file and paste it into:
+//   Firebase Console → Firestore Database → Rules → Edit rules → Publish
+//
+// DO NOT commit service-account credentials to version control.
+//
+// Merge strategy: existing user/fish/compatibility rules are preserved verbatim.
+// The communityPosts block is new.
+//
+// Key security decisions for communityPosts:
+//   1. Aquarium ownership enforced server-side via exists() cross-collection check.
+//   2. Only kAllowedSnapshotFields keys may appear in aquariumSnapshot.
+//   3. visibleFields is validated against the same allowlist via hasOnly().
+//   4. likeCount/commentCount do NOT exist on the post document — no counter
+//      manipulation possible.
+//   5. Post updates are restricted to caption + updatedAt only (affectedKeys).
+//   6. Like documents use the liker's UID as the document ID — structural
+//      duplicate prevention (second set() is idempotent, not an error).
+//   7. Comments cannot be updated — only created or deleted by their author.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ───────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // The four field names that are safe to expose in a public post snapshot.
+    // Must match kAllowedSnapshotFields in community_post.dart.
+    function allowedAquariumFields() {
+      return ['name', 'type', 'volumeLitres', 'description'];
+    }
+
+    // ─── Existing: User private data ────────────────────────────────────────
+    // Covers: aquariums, reminders, settings (all user subcollections).
+    // No change from existing behaviour.
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ─── Existing: Fish catalogue (read-only, authenticated) ────────────────
+    match /fish/{fishId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ─── Existing: Compatibility pairs (read-only, authenticated) ───────────
+    match /compatibility/{pairId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ─── New: Community posts ────────────────────────────────────────────────
+    match /communityPosts/{postId} {
+
+      // Any authenticated user can read the feed.
+      allow read: if isSignedIn();
+
+      // CREATE: authenticated user, author is self, required fields present,
+      // caption ≤ 500 chars, snapshot keys restricted to safe allowlist,
+      // visibleFields restricted to safe allowlist,
+      // and the referenced aquarium actually belongs to the author
+      // (server-side cross-collection ownership check — costs 1 extra read).
+      allow create: if isSignedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() > 0
+        && request.resource.data.caption is string
+        && request.resource.data.caption.size() > 0
+        && request.resource.data.caption.size() <= 500
+        && request.resource.data.aquariumId is string
+        && request.resource.data.aquariumId.size() > 0
+        && request.resource.data.aquariumSnapshot is map
+        && request.resource.data.aquariumSnapshot.keys().hasOnly(allowedAquariumFields())
+        && request.resource.data.visibleFields is list
+        && request.resource.data.visibleFields.hasOnly(allowedAquariumFields())
+        && request.resource.data.visibleFields.size() > 0
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid)/aquariums/$(request.resource.data.aquariumId));
+
+      // UPDATE: only the post author may update, and only caption + updatedAt
+      // may change. All other fields (authorUid, aquariumId, snapshot, …) are
+      // immutable after creation.
+      allow update: if isSignedIn()
+        && resource.data.authorUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['caption', 'updatedAt'])
+        && request.resource.data.caption is string
+        && request.resource.data.caption.size() > 0
+        && request.resource.data.caption.size() <= 500
+        && request.resource.data.updatedAt is timestamp;
+
+      // DELETE: only the author. Subcollections are cleaned up client-side
+      // by CommunityService.deletePost() before this call executes.
+      allow delete: if isSignedIn()
+        && resource.data.authorUid == request.auth.uid;
+
+      // ── Likes subcollection ─────────────────────────────────────────────
+      // Document ID = the liker's UID → structural duplicate prevention.
+      match /likes/{uid} {
+        allow read: if isSignedIn();
+
+        // Only the user identified by {uid} may create their own like doc.
+        allow create: if isOwner(uid)
+          && request.resource.data.uid == uid
+          && request.resource.data.createdAt is timestamp;
+
+        // Only the same user may delete their like.
+        allow delete: if isOwner(uid);
+
+        // Likes are immutable — no updates allowed.
+        allow update: if false;
+      }
+
+      // ── Comments subcollection ──────────────────────────────────────────
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+
+        // Any authenticated user may comment.
+        allow create: if isSignedIn()
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorName is string
+          && request.resource.data.authorName.size() > 0
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt is timestamp;
+
+        // Only the comment author may delete their own comment.
+        allow delete: if isSignedIn()
+          && resource.data.authorUid == request.auth.uid;
+
+        // Comments are immutable — no updates allowed.
+        allow update: if false;
+      }
+    }
+  }
+}

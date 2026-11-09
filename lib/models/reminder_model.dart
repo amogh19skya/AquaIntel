@@ -52,6 +52,26 @@ extension ReminderTypeExtension on ReminderType {
   }
 }
 
+/// The three lifecycle statuses for a reminder.
+enum ReminderStatus {
+  pending,
+  overdue,
+  completed,
+}
+
+extension ReminderStatusExtension on ReminderStatus {
+  String get label {
+    switch (this) {
+      case ReminderStatus.pending:
+        return 'Pending';
+      case ReminderStatus.overdue:
+        return 'Overdue';
+      case ReminderStatus.completed:
+        return 'Completed';
+    }
+  }
+}
+
 /// Data model for a maintenance reminder stored under
 /// `users/{userId}/reminders/{reminderId}` in Cloud Firestore.
 class ReminderModel {
@@ -63,6 +83,7 @@ class ReminderModel {
   final String aquariumName;
   final DateTime scheduledDateTime;
   final bool isCompleted;
+  final DateTime? completedAt;
   final bool notificationEnabled;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -77,26 +98,49 @@ class ReminderModel {
     required this.aquariumName,
     required this.scheduledDateTime,
     this.isCompleted = false,
+    this.completedAt,
     this.notificationEnabled = true,
     required this.createdAt,
     required this.updatedAt,
     required this.notificationId,
   });
 
+  /// Derives the current [ReminderStatus] based on completion state
+  /// and the scheduled date/time compared to [DateTime.now()].
+  ReminderStatus get status {
+    if (isCompleted) return ReminderStatus.completed;
+    if (scheduledDateTime.isBefore(DateTime.now())) {
+      return ReminderStatus.overdue;
+    }
+    return ReminderStatus.pending;
+  }
+
+  bool get isPending => status == ReminderStatus.pending;
+  bool get isOverdue => status == ReminderStatus.overdue;
+  bool get isFuture => scheduledDateTime.isAfter(DateTime.now());
+
   factory ReminderModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final bool completed = data['isCompleted'] as bool? ??
+        (data['status'] == 'completed');
+
     return ReminderModel(
       id: doc.id,
       title: data['title'] as String? ?? '',
       description: data['description'] as String? ?? '',
-      type: ReminderTypeExtension.fromString(data['type'] as String? ?? 'Custom'),
+      type: ReminderTypeExtension.fromString(
+          data['type'] as String? ?? 'Custom'),
       aquariumId: data['aquariumId'] as String?,
       aquariumName: data['aquariumName'] as String? ?? '',
-      scheduledDateTime: (data['scheduledDateTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      isCompleted: data['isCompleted'] as bool? ?? false,
+      scheduledDateTime:
+          (data['scheduledDateTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isCompleted: completed,
+      completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
       notificationEnabled: data['notificationEnabled'] as bool? ?? true,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt:
+          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt:
+          (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       notificationId: data['notificationId'] as int? ?? 0,
     );
   }
@@ -106,10 +150,13 @@ class ReminderModel {
       'title': title,
       'description': description,
       'type': type.label,
+      'status': status.name,
       'aquariumId': aquariumId,
       'aquariumName': aquariumName,
       'scheduledDateTime': Timestamp.fromDate(scheduledDateTime),
       'isCompleted': isCompleted,
+      'completedAt':
+          completedAt != null ? Timestamp.fromDate(completedAt!) : null,
       'notificationEnabled': notificationEnabled,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
@@ -126,6 +173,7 @@ class ReminderModel {
     String? aquariumName,
     DateTime? scheduledDateTime,
     bool? isCompleted,
+    Object? completedAt = _unset,
     bool? notificationEnabled,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -140,6 +188,9 @@ class ReminderModel {
       aquariumName: aquariumName ?? this.aquariumName,
       scheduledDateTime: scheduledDateTime ?? this.scheduledDateTime,
       isCompleted: isCompleted ?? this.isCompleted,
+      completedAt: completedAt == _unset
+          ? this.completedAt
+          : completedAt as DateTime?,
       notificationEnabled: notificationEnabled ?? this.notificationEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -147,10 +198,10 @@ class ReminderModel {
     );
   }
 
-  bool get isFuture => scheduledDateTime.isAfter(DateTime.now());
-
   @override
   String toString() =>
       'ReminderModel(id: $id, title: $title, type: ${type.label}, '
-      'scheduledAt: $scheduledDateTime, completed: $isCompleted)';
+      'status: ${status.name}, scheduledAt: $scheduledDateTime, completed: $isCompleted)';
 }
+
+const Object _unset = Object();

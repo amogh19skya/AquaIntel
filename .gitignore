@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ignore service account key
+backend/serviceAccountKey.json
+backend/*serviceAccount*.json
+
+# Sensitive credentials
+backend/.env
+backend/serviceAccountKey.json

@@ -15,6 +15,10 @@ class AquariumModel {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Firebase Storage download URL for the aquarium photograph.
+  /// Null when no image has been uploaded yet.
+  final String? imageUrl;
+
   AquariumModel({
     required this.id,
     required this.name,
@@ -27,6 +31,7 @@ class AquariumModel {
     required this.description,
     required this.createdAt,
     required this.updatedAt,
+    this.imageUrl,
   });
 
   // ─── Firestore factory ───
@@ -46,6 +51,7 @@ class AquariumModel {
       description: data['description'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      imageUrl: data['imageUrl'] as String?,
     );
   }
 
@@ -62,6 +68,7 @@ class AquariumModel {
       'description': description,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
+      'imageUrl': imageUrl,
     };
   }
 
@@ -78,6 +85,8 @@ class AquariumModel {
     String? description,
     DateTime? createdAt,
     DateTime? updatedAt,
+    // Use a sentinel so callers can explicitly set imageUrl to null.
+    Object? imageUrl = _unset,
   }) {
     return AquariumModel(
       id: id ?? this.id,
@@ -91,6 +100,7 @@ class AquariumModel {
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      imageUrl: imageUrl == _unset ? this.imageUrl : imageUrl as String?,
     );
   }
 
@@ -100,3 +110,7 @@ class AquariumModel {
         'volume: $volumeLitres L)';
   }
 }
+
+/// Private sentinel object so [copyWith] can distinguish between
+/// "caller did not supply imageUrl" and "caller explicitly passed null".
+const Object _unset = Object();
