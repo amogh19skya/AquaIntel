@@ -28,12 +28,12 @@ class _SignupPageState extends State<SignupPage>
   bool _isLoading = false;
 
   // AquaIntel colors
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color topColor = AquaColors.bgSecondary;
-  static const Color cardColor = AquaColors.card;
-  static const Color inputColor = AquaColors.input;
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color textBlue = AquaColors.textSecondary;
+  static Color get backgroundColor => AquaColors.bg;
+  static Color get topColor => AquaColors.bgSecondary;
+  static Color get cardColor => AquaColors.card;
+  static Color get inputColor => AquaColors.input;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get textBlue => AquaColors.textSecondary;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -114,12 +114,12 @@ class _SignupPageState extends State<SignupPage>
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            Icon(Icons.error_outline, color: Colors.white, size: 18),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(fontSize: 13),
+                style: TextStyle(fontSize: 13),
               ),
             ),
           ],
@@ -148,7 +148,7 @@ class _SignupPageState extends State<SignupPage>
               alignment: Alignment.topCenter,
               child: Container(
                 height: 85,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: topColor,
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(100),
@@ -200,7 +200,7 @@ class _SignupPageState extends State<SignupPage>
                                 ),
                               ],
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.water,
                               color: Colors.white,
                               size: 26,
@@ -212,7 +212,7 @@ class _SignupPageState extends State<SignupPage>
                           // =========================
                           // APP NAME
                           // =========================
-                          const Text(
+                          Text(
                             'AquaIntel',
                             style: TextStyle(
                               color: Colors.white,
@@ -224,7 +224,7 @@ class _SignupPageState extends State<SignupPage>
 
                           const SizedBox(height: 4),
 
-                          const Text(
+                          Text(
                             'Your smart management system',
                             style: TextStyle(
                               color: textBlue,
@@ -262,7 +262,7 @@ class _SignupPageState extends State<SignupPage>
                               children: [
 
                                 // Title
-                                const Text(
+                                Text(
                                   'Create Account',
                                   style: TextStyle(
                                     color: Colors.white,
@@ -273,7 +273,7 @@ class _SignupPageState extends State<SignupPage>
 
                                 const SizedBox(height: 5),
 
-                                const Text(
+                                Text(
                                   'Join AquaIntel and manage your aquarium smarter',
                                   style: TextStyle(
                                     color: textBlue,
@@ -286,7 +286,7 @@ class _SignupPageState extends State<SignupPage>
                                 // =========================
                                 // NAME
                                 // =========================
-                                const Text(
+                                Text(
                                   'Full Name',
                                   style: TextStyle(
                                     color: textBlue,
@@ -313,7 +313,7 @@ class _SignupPageState extends State<SignupPage>
                                 // =========================
                                 // EMAIL
                                 // =========================
-                                const Text(
+                                Text(
                                   'Email',
                                   style: TextStyle(
                                     color: textBlue,
@@ -348,7 +348,7 @@ class _SignupPageState extends State<SignupPage>
                                 // =========================
                                 // PASSWORD
                                 // =========================
-                                const Text(
+                                Text(
                                   'Password',
                                   style: TextStyle(
                                     color: textBlue,
@@ -393,7 +393,7 @@ class _SignupPageState extends State<SignupPage>
                                 // =========================
                                 // CONFIRM PASSWORD
                                 // =========================
-                                const Text(
+                                Text(
                                   'Confirm Password',
                                   style: TextStyle(
                                     color: textBlue,
@@ -468,7 +468,7 @@ class _SignupPageState extends State<SignupPage>
                                               strokeWidth: 2,
                                             ),
                                           )
-                                        : const Text(
+                                        : Text(
                                             'Create Account',
                                             style: TextStyle(
                                               fontSize: 13,
@@ -486,7 +486,7 @@ class _SignupPageState extends State<SignupPage>
                                 Center(
                                   child: RichText(
                                     text: TextSpan(
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: textBlue,
                                         fontSize: 12,
                                       ),
@@ -500,7 +500,7 @@ class _SignupPageState extends State<SignupPage>
                                             onTap: () {
                                               Navigator.pop(context);
                                             },
-                                            child: const Text(
+                                            child: Text(
                                               'Sign in',
                                               style: TextStyle(
                                                 color: primaryBlue,
@@ -550,13 +550,13 @@ class _SignupPageState extends State<SignupPage>
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       onFieldSubmitted: onFieldSubmitted,
-      style: const TextStyle(
+      style: TextStyle(
         color: Colors.white,
         fontSize: 13,
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(
+        hintStyle: TextStyle(
           color: AquaColors.textMuted,
         ),
         prefixIcon: Icon(
@@ -569,40 +569,40 @@ class _SignupPageState extends State<SignupPage>
         fillColor: inputColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
-          borderSide: const BorderSide(
+          borderSide: BorderSide(
             color: AquaColors.border,
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
-          borderSide: const BorderSide(
+          borderSide: BorderSide(
             color: AquaColors.border,
             width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
-          borderSide: const BorderSide(
+          borderSide: BorderSide(
             color: primaryBlue,
             width: 1.5,
           ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
-          borderSide: const BorderSide(
+          borderSide: BorderSide(
             color: AquaColors.error,
             width: 1,
           ),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
-          borderSide: const BorderSide(
+          borderSide: BorderSide(
             color: AquaColors.error,
             width: 1.5,
           ),
         ),
-        errorStyle: const TextStyle(
+        errorStyle: TextStyle(
           fontSize: 11,
           color: AquaColors.error,
         ),

@@ -44,10 +44,19 @@ service cloud.firestore {
       return ['name', 'type', 'volumeLitres', 'description'];
     }
 
-    // ─── Existing: User private data ────────────────────────────────────────
-    // Covers: aquariums, reminders, settings (all user subcollections).
-    // No change from existing behaviour.
-    match /users/{userId}/{document=**} {
+    // ─── User profile document (public read for avatar/name in Community) ───
+    // Any authenticated user may read the top-level profile document so that
+    // Community posts and comments can display the author's selected avatar.
+    // Writes remain strictly owner-only.
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+    }
+
+    // ─── User private subcollections (aquariums, reminders, settings) ───────
+    // Owner-only. The {document=**} wildcard matches all documents nested one
+    // or more levels below /users/{userId}/, keeping private data protected.
+    match /users/{userId}/{collection}/{document=**} {
       allow read, write: if isOwner(userId);
     }
 

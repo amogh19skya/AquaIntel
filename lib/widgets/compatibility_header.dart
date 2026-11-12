@@ -10,8 +10,8 @@ import '../theme/app_theme.dart';
 /// colours, typography, gradient background) from the original screen.
 class CompatibilityHeader extends StatelessWidget {
   // ─── AquaIntel colour tokens ──
-  static const Color _primaryBlue = AquaColors.accent;
-  static const Color _textBlue = AquaColors.textSecondary;
+  static Color get _primaryBlue => AquaColors.accent;
+  static Color get _textBlue => AquaColors.textSecondary;
 
   const CompatibilityHeader({super.key});
 
@@ -70,7 +70,7 @@ class CompatibilityHeader extends StatelessWidget {
                       color: _primaryBlue.withValues(alpha: 0.3),
                       size: 40,
                     ),
-                    const Icon(
+                    Icon(
                       Icons.set_meal_rounded,
                       color: _primaryBlue,
                       size: 28,

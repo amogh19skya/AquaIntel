@@ -21,12 +21,6 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
   bool _isBotTyping = false;
   String? _sessionId;
 
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color cardColor = AquaColors.card;
-  static const Color inputColor = AquaColors.input;
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color textBlue = AquaColors.textSecondary;
-
   @override
   void initState() {
     super.initState();
@@ -46,11 +40,119 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
       _sessionId = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('Started a new conversation'),
-        duration: Duration(seconds: 2),
-        backgroundColor: cardColor,
+        duration: const Duration(seconds: 2),
+        backgroundColor: AquaColors.card,
       ),
+    );
+  }
+
+  Future<void> _showServerSettingsDialog() async {
+    final currentUrl = await _aquaBotService.getActiveBaseUrl();
+    final urlController = TextEditingController(text: currentUrl);
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AquaColors.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Icons.dns_rounded, color: AquaColors.accent, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                'AquaBot Server URL',
+                style: TextStyle(
+                  color: AquaColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Configure the FastAPI backend address:',
+                style: TextStyle(
+                  color: AquaColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: urlController,
+                style: TextStyle(color: AquaColors.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'e.g. http://192.168.0.101:8000',
+                  hintStyle: TextStyle(color: AquaColors.textMuted),
+                  filled: true,
+                  fillColor: AquaColors.input,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AquaColors.border),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _presetChip('USB (127.0.0.1)', 'http://127.0.0.1:8000', urlController),
+                  _presetChip('Wi-Fi LAN', 'http://192.168.0.101:8000', urlController),
+                  _presetChip('Emulator', 'http://10.0.2.2:8000', urlController),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: AquaColors.textSecondary)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AquaColors.accent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final newUrl = urlController.text.trim();
+                if (newUrl.isNotEmpty) {
+                  await _aquaBotService.setCustomBaseUrl(newUrl);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Server URL set to: $newUrl'),
+                        backgroundColor: AquaColors.card,
+                      ),
+                    );
+                  }
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _presetChip(String label, String url, TextEditingController controller) {
+    return ActionChip(
+      label: Text(label, style: TextStyle(fontSize: 11)),
+      backgroundColor: AquaColors.input,
+      labelStyle: TextStyle(color: AquaColors.accent, fontWeight: FontWeight.w600),
+      side: BorderSide(color: AquaColors.border),
+      onPressed: () => controller.text = url,
     );
   }
 
@@ -83,6 +185,7 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
       _messages.add({
         'message': text,
         'isUser': true,
+        'failed': false,
       });
       _isBotTyping = true;
     });
@@ -111,6 +214,7 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
           _messages.add({
             'message': response.reply,
             'isUser': false,
+            'failed': !response.success,
           });
           _isBotTyping = false;
         });
@@ -120,8 +224,9 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
       if (mounted) {
         setState(() {
           _messages.add({
-            'message': 'Sorry, I ran into an error getting an answer. Please try again.',
+            'message': 'Sorry, I ran into an error getting an answer. Please check your backend connection.',
             'isUser': false,
+            'failed': true,
           });
           _isBotTyping = false;
         });
@@ -133,7 +238,7 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: AquaColors.bg,
 
       // ─────────────────────────────────────
       // APP BAR
@@ -142,14 +247,12 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
         backgroundColor: AquaColors.bgSecondary,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Colors.white,
+            color: AquaColors.textPrimary,
             size: 20,
           ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: Row(
           children: [
@@ -163,21 +266,21 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
                   color: AquaColors.accent.withValues(alpha: 0.25),
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.auto_awesome,
                 color: AquaColors.accent,
                 size: 20,
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'AquaBot',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AquaColors.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -185,7 +288,7 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
                   Text(
                     'Domain AI Aquarium Assistant',
                     style: TextStyle(
-                      color: textBlue,
+                      color: AquaColors.textSecondary,
                       fontSize: 11,
                     ),
                   ),
@@ -196,9 +299,18 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
+              Icons.dns_outlined,
+              color: AquaColors.textSecondary,
+              size: 22,
+            ),
+            tooltip: 'Server Settings',
+            onPressed: _showServerSettingsDialog,
+          ),
+          IconButton(
+            icon: Icon(
               Icons.add_comment_outlined,
-              color: Colors.white,
+              color: AquaColors.textPrimary,
               size: 22,
             ),
             tooltip: 'New Conversation',
@@ -227,6 +339,7 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
                       return _buildMessage(
                         message['message'],
                         message['isUser'],
+                        isFailed: message['failed'] == true,
                       );
                     },
                   ),
@@ -267,17 +380,17 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
                   ),
                 ],
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.auto_awesome,
                 color: AquaColors.accent,
                 size: 38,
               ),
             ),
             const SizedBox(height: 22),
-            const Text(
+            Text(
               'Hi! I’m AquaBot',
               style: TextStyle(
-                color: Colors.white,
+                color: AquaColors.textPrimary,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
@@ -287,7 +400,7 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
               'Your domain-restricted AI aquarium assistant.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: textBlue.withValues(alpha: 0.9),
+                color: AquaColors.textSecondary,
                 fontSize: 14,
               ),
             ),
@@ -296,7 +409,7 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
               'Ask me about fish species care, feeding schedules,\nwater quality (pH/temp), and tank maintenance.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: textBlue.withValues(alpha: 0.65),
+                color: AquaColors.textMuted,
                 fontSize: 13,
                 height: 1.5,
               ),
@@ -333,22 +446,24 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
           vertical: 10,
         ),
         decoration: BoxDecoration(
-          color: cardColor,
+          color: AquaColors.card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: primaryBlue.withValues(alpha: 0.3),
+            color: AquaColors.accent.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.help_outline_rounded, color: primaryBlue, size: 14),
+            Icon(Icons.help_outline_rounded, color: AquaColors.accent, size: 14),
             const SizedBox(width: 6),
-            Text(
-              text,
-              style: const TextStyle(
-                color: textBlue,
-                fontSize: 12,
+            Flexible(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: AquaColors.textSecondary,
+                  fontSize: 12,
+                ),
               ),
             ),
           ],
@@ -367,8 +482,9 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: cardColor,
+          color: AquaColors.card,
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AquaColors.border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -378,14 +494,14 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: primaryBlue,
+                color: AquaColors.accent,
               ),
             ),
             const SizedBox(width: 10),
             Text(
               'AquaBot is thinking...',
               style: TextStyle(
-                color: textBlue.withValues(alpha: 0.8),
+                color: AquaColors.textSecondary,
                 fontSize: 13,
                 fontStyle: FontStyle.italic,
               ),
@@ -399,12 +515,12 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
   // ─────────────────────────────────────────
   // MESSAGE BUBBLE
   // ─────────────────────────────────────────
-  Widget _buildMessage(String message, bool isUser) {
+  Widget _buildMessage(String message, bool isUser, {bool isFailed = false}) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
+          maxWidth: MediaQuery.of(context).size.width * 0.82,
         ),
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(
@@ -412,27 +528,70 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
           vertical: 13,
         ),
         decoration: BoxDecoration(
-          color: isUser ? primaryBlue : cardColor,
+          color: isUser
+              ? AquaColors.accent
+              : (isFailed
+                  ? AquaColors.error.withValues(alpha: 0.12)
+                  : AquaColors.card),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),
             bottomLeft: Radius.circular(isUser ? 18 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 18),
           ),
-          border: isUser
-              ? null
-              : Border.all(
-                  color: primaryBlue.withValues(alpha: 0.15),
-                ),
-        ),
-        child: SelectableText(
-          message,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            height: 1.45,
-            fontWeight: isUser ? FontWeight.w500 : FontWeight.normal,
+          border: Border.all(
+            color: isUser
+                ? AquaColors.accent
+                : (isFailed
+                    ? AquaColors.error.withValues(alpha: 0.4)
+                    : AquaColors.border),
           ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText(
+              message,
+              style: TextStyle(
+                color: isUser
+                    ? Colors.white
+                    : (isFailed ? AquaColors.error : AquaColors.textPrimary),
+                fontSize: 14,
+                height: 1.45,
+                fontWeight: isUser ? FontWeight.w500 : FontWeight.normal,
+              ),
+            ),
+            if (isFailed) ...[
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: _showServerSettingsDialog,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AquaColors.accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AquaColors.accent.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.settings, color: AquaColors.accent, size: 14),
+                      SizedBox(width: 4),
+                      Text(
+                        'Change Server IP / URL',
+                        style: TextStyle(
+                          color: AquaColors.accent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -453,10 +612,10 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
             bottom: 6,
           ),
           decoration: BoxDecoration(
-            color: inputColor,
+            color: AquaColors.input,
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: primaryBlue.withValues(alpha: 0.3),
+              color: AquaColors.border,
             ),
           ),
           child: Row(
@@ -465,8 +624,8 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
                 child: TextField(
                   controller: _messageController,
                   enabled: !_isBotTyping,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AquaColors.textPrimary,
                     fontSize: 14,
                   ),
                   textInputAction: TextInputAction.send,
@@ -474,10 +633,12 @@ class _AquaBotScreenState extends State<AquaBotScreen> {
                   decoration: InputDecoration(
                     hintText: _isBotTyping ? 'AquaBot is responding...' : 'Ask AquaBot...',
                     hintStyle: TextStyle(
-                      color: textBlue.withValues(alpha: 0.5),
+                      color: AquaColors.textMuted,
                       fontSize: 14,
                     ),
                     border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),

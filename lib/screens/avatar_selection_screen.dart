@@ -86,9 +86,9 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
         backgroundColor: AquaColors.card,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AquaColors.border),
+          side: BorderSide(color: AquaColors.border),
         ),
-        title: const Text(
+        title: Text(
           'Discard Avatar Changes?',
           style: TextStyle(
             color: AquaColors.textPrimary,
@@ -96,7 +96,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
             fontSize: 18,
           ),
         ),
-        content: const Text(
+        content: Text(
           'You have selected a new avatar without saving. Are you sure you want to exit?',
           style: TextStyle(
             color: AquaColors.textSecondary,
@@ -106,7 +106,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text(
+            child: Text(
               'Keep Editing',
               style: TextStyle(color: AquaColors.textSecondary),
             ),
@@ -148,7 +148,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Avatar updated successfully! ✓'),
           backgroundColor: AquaColors.cardElevated,
           behavior: SnackBarBehavior.floating,
@@ -184,10 +184,10 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
           backgroundColor: AquaColors.bg,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: AquaColors.textSecondary, size: 20),
+            icon: Icon(Icons.arrow_back_ios_new, color: AquaColors.textSecondary, size: 20),
             onPressed: _handleBackNavigation,
           ),
-          title: const Text(
+          title: Text(
             'Choose Your Avatar',
             style: TextStyle(
               color: AquaColors.textPrimary,
@@ -200,7 +200,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
         body: Column(
           children: [
             // Subtitle
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
               child: Text(
                 'Select a character that represents you.',
@@ -293,7 +293,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
                       : 'Aquarist Profile',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AquaColors.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -308,7 +308,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
                   ),
                   child: Text(
                     'Character #$avatarNumber',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AquaColors.accent,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -325,7 +325,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
                 color: AquaColors.accent.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
+              child: Text(
                 'Modified',
                 style: TextStyle(
                   color: AquaColors.accent,
@@ -409,7 +409,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, __, ___) => Icon(
                     Icons.person,
                     color: AquaColors.textSecondary,
                   ),
@@ -425,11 +425,11 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
                 child: Container(
                   width: 22,
                   height: 22,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AquaColors.accent,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.check,
                     color: AquaColors.bg,
                     size: 15,
@@ -467,13 +467,13 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
               onPressed: _handleBackNavigation,
               style: OutlinedButton.styleFrom(
                 foregroundColor: AquaColors.textSecondary,
-                side: const BorderSide(color: AquaColors.border),
+                side: BorderSide(color: AquaColors.border),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(
                   fontSize: 15,
@@ -501,7 +501,7 @@ class _AvatarSelectionScreenState extends State<AvatarSelectionScreen>
                 elevation: 3,
               ),
               child: _isSaving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(

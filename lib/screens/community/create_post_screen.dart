@@ -101,8 +101,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       backgroundColor: AquaColors.bg,
       appBar: AppBar(
         backgroundColor: AquaColors.bg,
-        iconTheme: const IconThemeData(color: AquaColors.textPrimary),
-        title: const Text(
+        iconTheme: IconThemeData(color: AquaColors.textPrimary),
+        title: Text(
           'Share Aquarium',
           style: TextStyle(color: AquaColors.textPrimary, fontWeight: FontWeight.w600),
         ),
@@ -119,7 +119,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     )
                   : TextButton(
                       onPressed: _publish,
-                      child: const Text(
+                      child: Text(
                         'Post',
                         style: TextStyle(
                           color: AquaColors.accent,
@@ -148,7 +148,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 // ─── Step 2: Visible fields ───
                 _buildSectionLabel('What to share'),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Choose which details will appear in your post.',
                   style: TextStyle(color: AquaColors.textSecondary, fontSize: 13),
                 ),
@@ -200,7 +200,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Widget _buildSectionLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         color: AquaColors.textPrimary,
         fontSize: 16,
         fontWeight: FontWeight.bold,
@@ -228,7 +228,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AquaColors.border),
             ),
-            child: const Text(
+            child: Text(
               'You have no aquariums yet. Add one from the Dashboard first.',
               style: TextStyle(color: AquaColors.textSecondary, fontSize: 14),
               textAlign: TextAlign.center,
@@ -269,7 +269,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 color: AquaColors.accent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.water, color: AquaColors.accent, size: 18),
+              child: Icon(Icons.water, color: AquaColors.accent, size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -278,7 +278,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 children: [
                   Text(
                     a.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AquaColors.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -286,7 +286,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ),
                   Text(
                     '${a.type}  ·  ${a.volumeLitres.toStringAsFixed(1)} L',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AquaColors.textSecondary,
                       fontSize: 12,
                     ),
@@ -295,7 +295,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle, color: AquaColors.accent, size: 20),
+              Icon(Icons.check_circle, color: AquaColors.accent, size: 20),
           ],
         ),
       ),
@@ -335,7 +335,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (selected)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(right: 6),
                     child: Icon(Icons.check, color: AquaColors.accent, size: 14),
                   ),
@@ -366,8 +366,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       maxLength: 500,
       minLines: 4,
       maxLines: 6,
-      style: const TextStyle(color: AquaColors.textPrimary, fontSize: 14),
-      decoration: const InputDecoration(
+      style: TextStyle(color: AquaColors.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
         hintText: "Tell the community about your tank…",
         counterStyle: TextStyle(color: AquaColors.textMuted),
       ),
@@ -431,7 +431,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   if (_visibleFields.contains('name'))
                     Text(
                       a.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AquaColors.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -447,7 +447,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                       child: Text(
                         a.type.toUpperCase(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AquaColors.accent,
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
@@ -460,7 +460,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Volume: ${a.volumeLitres.toStringAsFixed(1)} L',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AquaColors.textSecondary,
                         fontSize: 12,
                       ),
@@ -471,7 +471,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     const SizedBox(height: 6),
                     Text(
                       a.description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AquaColors.textSecondary,
                         fontSize: 12,
                       ),
@@ -480,7 +480,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     ),
                   ],
                   if (_visibleFields.isEmpty)
-                    const Text(
+                    Text(
                       'No details selected.',
                       style: TextStyle(color: AquaColors.textMuted, fontSize: 12),
                     ),

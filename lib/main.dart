@@ -22,11 +22,16 @@ void main() async {
 
   // 3. Request notification permission only on first launch.
   final prefs = await SharedPreferences.getInstance();
-  final permissionRequested = prefs.getBool('notification_permission_requested') ?? false;
+  final permissionRequested =
+      prefs.getBool('notification_permission_requested') ?? false;
   if (!permissionRequested) {
     await NotificationService().requestPermission();
     await prefs.setBool('notification_permission_requested', true);
   }
+
+  // 4. Load saved theme preference (default = light / false)
+  final isDark = prefs.getBool('dark_mode') ?? false;
+  themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
 
   runApp(const MyApp());
 }
@@ -36,13 +41,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'AquaIntel',
-      navigatorKey: navigatorKey,
-      theme: AquaTheme.theme,
-      initialRoute: AppRoutes.splash,
-      routes: AppRoutes.routes,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, currentMode, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'AquaIntel',
+          navigatorKey: navigatorKey,
+          theme: AquaTheme.lightTheme,
+          darkTheme: AquaTheme.darkTheme,
+          themeMode: currentMode,
+          initialRoute: AppRoutes.splash,
+          routes: AppRoutes.routes,
+        );
+      },
     );
   }
 }

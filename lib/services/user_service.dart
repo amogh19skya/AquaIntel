@@ -7,9 +7,14 @@ import '../models/user_model.dart';
 ///
 /// Avatars are identified by predefined IDs (`avatar_01` to `avatar_20`)
 /// and stored under `users/{uid}` in Cloud Firestore, with local caching in
-/// SharedPreferences for instant, offline-capable display.
+/// SharedPreferences and in-memory caches for instant, offline-capable display.
 class UserService {
   static const String _kLocalAvatarPrefix = 'user_avatar_';
+
+  // In-memory cache for user avatars by UID (prevents redundant fetches/rebuilds)
+  static final Map<String, String> _avatarCache = {};
+  // Shared broadcast streams per UID (deduplicates Firestore listeners)
+  static final Map<String, Stream<String?>> _avatarStreams = {};
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
@@ -21,6 +26,65 @@ class UserService {
         _firestore = firestore ?? FirebaseFirestore.instance;
 
   String? get currentUid => _auth.currentUser?.uid;
+
+  /// Returns cached avatarId for [uid] synchronously if available in memory.
+  String? getCachedAvatarId(String uid) {
+    if (uid.isEmpty) return null;
+    return _avatarCache[uid];
+  }
+
+  /// Manually seed or prime the in-memory cache (e.g. for testing).
+  static void setCachedAvatarId(String uid, String avatarId) {
+    if (uid.isNotEmpty && UserModel.isValidAvatarId(avatarId)) {
+      _avatarCache[uid] = UserModel.sanitizeAvatarId(avatarId);
+    }
+  }
+
+  /// Clears in-memory avatar caches (e.g. for testing or logout).
+  static void clearAvatarCache() {
+    _avatarCache.clear();
+    _avatarStreams.clear();
+  }
+
+  /// Watches any user's avatar ID by their [uid].
+  ///
+  /// - Returns a shared broadcast stream to prevent duplicate Firestore listeners.
+  /// - Updates the in-memory cache whenever the user document changes.
+  /// - Returns `null` if the user has no avatar set or if profile data is unavailable,
+  ///   allowing caller to fall back gracefully to initials.
+  Stream<String?> watchUserAvatarId(String uid) {
+    if (uid.isEmpty) {
+      return Stream.value(null);
+    }
+
+    if (_avatarStreams.containsKey(uid)) {
+      return _avatarStreams[uid]!;
+    }
+
+    final stream = _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map<String?>((snapshot) {
+      if (!snapshot.exists || snapshot.data() == null) {
+        return null;
+      }
+      final data = snapshot.data()!;
+      final rawId = (data['avatarId'] ?? data['avatar_id']) as String?;
+      if (rawId != null && UserModel.isValidAvatarId(rawId)) {
+        final sanitized = UserModel.sanitizeAvatarId(rawId);
+        _avatarCache[uid] = sanitized;
+        return sanitized;
+      }
+      return null;
+    }).handleError((_) {
+      // Gracefully handle permission-denied or offline errors without throwing
+      return null;
+    }).asBroadcastStream();
+
+    _avatarStreams[uid] = stream;
+    return stream;
+  }
 
   /// Returns a stream of the current user's profile document from Firestore.
   Stream<UserModel?> currentUserStream() {
@@ -48,7 +112,11 @@ class UserService {
       }
       final data = snapshot.data()!;
       data['id'] = snapshot.id;
-      return UserModel.fromJson(data);
+      final user = UserModel.fromJson(data);
+      if (user.avatarId != null && UserModel.isValidAvatarId(user.avatarId)) {
+        _avatarCache[uid] = user.effectiveAvatarId;
+      }
+      return user;
     });
   }
 
@@ -69,7 +137,9 @@ class UserService {
       }
       final data = snapshot.data()!;
       final avatarId = (data['avatarId'] ?? data['avatar_id']) as String?;
-      return UserModel.sanitizeAvatarId(avatarId);
+      final sanitized = UserModel.sanitizeAvatarId(avatarId);
+      _avatarCache[uid] = sanitized;
+      return sanitized;
     });
   }
 
@@ -78,6 +148,10 @@ class UserService {
     final uid = currentUid;
     if (uid == null) {
       return UserModel.defaultAvatarId;
+    }
+
+    if (_avatarCache.containsKey(uid)) {
+      return _avatarCache[uid]!;
     }
 
     // Try SharedPreferences first for instant render
@@ -90,19 +164,24 @@ class UserService {
         final data = doc.data()!;
         final rawId = (data['avatarId'] ?? data['avatar_id']) as String?;
         final sanitized = UserModel.sanitizeAvatarId(rawId);
+        _avatarCache[uid] = sanitized;
         await prefs.setString('$_kLocalAvatarPrefix$uid', sanitized);
         return sanitized;
       }
     } catch (_) {
       // Offline or error — fallback to cached
       if (cached != null && UserModel.isValidAvatarId(cached)) {
+        _avatarCache[uid] = cached;
         return cached;
       }
     }
 
-    return cached != null && UserModel.isValidAvatarId(cached)
-        ? cached
-        : UserModel.defaultAvatarId;
+    if (cached != null && UserModel.isValidAvatarId(cached)) {
+      _avatarCache[uid] = cached;
+      return cached;
+    }
+
+    return UserModel.defaultAvatarId;
   }
 
   /// Updates the user's avatar ID in Firestore and local storage.
@@ -113,6 +192,7 @@ class UserService {
     }
 
     final sanitized = UserModel.sanitizeAvatarId(avatarId);
+    _avatarCache[uid] = sanitized;
 
     // Save locally
     final prefs = await SharedPreferences.getInstance();
@@ -134,6 +214,7 @@ class UserService {
     }
 
     final sanitizedAvatar = UserModel.sanitizeAvatarId(user.avatarId);
+    _avatarCache[uid] = sanitizedAvatar;
 
     // Update Firebase Auth displayName
     if (user.fullName.isNotEmpty) {
@@ -160,4 +241,3 @@ class UserService {
         .set(data, SetOptions(merge: true));
   }
 }
-

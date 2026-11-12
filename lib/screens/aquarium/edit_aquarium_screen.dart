@@ -40,15 +40,16 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
   String _savingStatus = 'Save Changes';
 
   File? _newImageFile;
+  String? _directImageUrl;
   bool _isImageRemoved = false;
 
   // AquaIntel colours – mapped to shared theme tokens
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color cardColor = AquaColors.card;
-  static const Color inputColor = AquaColors.input;
-  static const Color primaryColor = AquaColors.accent;
-  static const Color textColor = AquaColors.textPrimary;
-  static const Color secondaryTextColor = AquaColors.textSecondary;
+  static Color get backgroundColor => AquaColors.bg;
+  static Color get cardColor => AquaColors.card;
+  static Color get inputColor => AquaColors.input;
+  static Color get primaryColor => AquaColors.accent;
+  static Color get textColor => AquaColors.textPrimary;
+  static Color get secondaryTextColor => AquaColors.textSecondary;
 
   @override
   void initState() {
@@ -128,12 +129,14 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
           onProgress: (progress) {
             if (mounted) {
               setState(() {
-                _savingStatus = 'Uploading photo (${(progress * 100).toInt()}%)...';
+                _savingStatus = 'Saving photo (${(progress * 100).toInt()}%)...';
               });
             }
           },
         );
         imageUrlToSave = newUrl;
+      } else if (_directImageUrl != null && _directImageUrl!.trim().isNotEmpty) {
+        imageUrlToSave = _directImageUrl!.trim();
       } else if (_isImageRemoved) {
         await _imageService.deleteImage(widget.aquarium.id);
         imageUrlToSave = null;
@@ -192,7 +195,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
         backgroundColor: backgroundColor,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
+        title: Text(
           'Edit Aquarium',
           style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
         ),
@@ -206,7 +209,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
-                const Text(
+                Text(
                   'Update Aquarium Details',
                   style: TextStyle(
                     color: textColor,
@@ -217,7 +220,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
 
                 const SizedBox(height: 8),
 
-                const Text(
+                Text(
                   'Edit your aquarium information and save changes.',
                   style: TextStyle(color: secondaryTextColor, fontSize: 14),
                 ),
@@ -231,12 +234,21 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
                   onImagePicked: (file) {
                     setState(() {
                       _newImageFile = file;
+                      _directImageUrl = null;
+                      _isImageRemoved = false;
+                    });
+                  },
+                  onImageUrlProvided: (url) {
+                    setState(() {
+                      _directImageUrl = url;
+                      _newImageFile = null;
                       _isImageRemoved = false;
                     });
                   },
                   onImageRemoved: () {
                     setState(() {
                       _newImageFile = null;
+                      _directImageUrl = null;
                       _isImageRemoved = true;
                     });
                   },
@@ -259,7 +271,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
 
                 const SizedBox(height: 25),
 
-                const Text(
+                Text(
                   'Tank Dimensions',
                   style: TextStyle(
                     color: textColor,
@@ -270,7 +282,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
 
                 const SizedBox(height: 6),
 
-                const Text(
+                Text(
                   'Update the length, width and height of your aquarium.',
                   style: TextStyle(color: secondaryTextColor, fontSize: 13),
                 ),
@@ -324,8 +336,8 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
                   height: 52,
                   child: ElevatedButton.icon(
                     onPressed: _calculateVolume,
-                    icon: const Icon(Icons.calculate),
-                    label: const Text(
+                    icon: Icon(Icons.calculate),
+                    label: Text(
                       'Recalculate Volume',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                     ),
@@ -362,14 +374,14 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
                             color: primaryColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.water_drop,
                             color: primaryColor,
                             size: 26,
                           ),
                         ),
                         const SizedBox(width: 15),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -394,7 +406,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
                         ),
                         Text(
                           '${_volumeLitres!.toStringAsFixed(1)} L',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: primaryColor,
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -490,7 +502,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           color: textColor,
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -510,10 +522,10 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
       controller: controller,
       validator: validator,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: secondaryTextColor),
+        hintStyle: TextStyle(color: secondaryTextColor),
         prefixIcon: Icon(icon, color: secondaryTextColor),
         filled: true,
         fillColor: inputColor,
@@ -523,7 +535,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: primaryColor, width: 1.5),
+          borderSide: BorderSide(color: primaryColor, width: 1.5),
         ),
         errorStyle: const TextStyle(color: Colors.redAccent),
       ),
@@ -537,10 +549,10 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
     return TextFormField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: secondaryTextColor),
+        labelStyle: TextStyle(color: secondaryTextColor),
         filled: true,
         fillColor: inputColor,
         border: OutlineInputBorder(
@@ -549,7 +561,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: primaryColor),
+          borderSide: BorderSide(color: primaryColor),
         ),
         errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 10),
       ),
@@ -573,7 +585,7 @@ class _EditAquariumScreenState extends State<EditAquariumScreen> {
       initialValue: value,
       dropdownColor: cardColor,
       iconEnabledColor: secondaryTextColor,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: secondaryTextColor),
         filled: true,

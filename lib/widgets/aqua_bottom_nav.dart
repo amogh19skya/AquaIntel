@@ -23,7 +23,7 @@ class AquaBottomNav extends StatelessWidget {
       height: 72,
       decoration: BoxDecoration(
         color: AquaColors.bgSecondary,
-        border: const Border(
+        border: Border(
           top: BorderSide(color: AquaColors.border, width: 1),
         ),
         boxShadow: [

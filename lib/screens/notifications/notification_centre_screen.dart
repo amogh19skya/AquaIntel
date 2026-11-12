@@ -58,7 +58,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('All notifications marked as read'),
         backgroundColor: AquaColors.cardElevated,
         behavior: SnackBarBehavior.floating,
@@ -77,14 +77,14 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AquaColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
+        title: Text(
           'Clear All Notifications',
           style: TextStyle(
             color: AquaColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: const Text(
+        content: Text(
           'Are you sure you want to clear all notifications?\n\n'
           'Your reminder tasks and schedules will remain safely preserved.',
           style: TextStyle(color: AquaColors.textSecondary, height: 1.4),
@@ -92,7 +92,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel',
+            child: Text('Cancel',
                 style: TextStyle(color: AquaColors.textMuted)),
           ),
           ElevatedButton(
@@ -120,7 +120,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('Notifications cleared'),
         backgroundColor: AquaColors.cardElevated,
         behavior: SnackBarBehavior.floating,
@@ -228,11 +228,11 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
         backgroundColor: AquaColors.bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
+          icon: Icon(Icons.arrow_back_ios_new,
               color: AquaColors.textPrimary, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Notifications',
           style: TextStyle(
             color: AquaColors.textPrimary,
@@ -262,7 +262,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                       padding: const EdgeInsets.all(24.0),
                       child: Text(
                         'Failed to load notifications: ${snapshot.error}',
-                        style: const TextStyle(color: AquaColors.error),
+                        style: TextStyle(color: AquaColors.error),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -320,7 +320,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                           if (unreadNotifs.isNotEmpty)
                             IconButton(
                               tooltip: 'Mark all as read',
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.done_all_rounded,
                                 color: AquaColors.accent,
                                 size: 20,
@@ -330,7 +330,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                           // Clear all button
                           IconButton(
                             tooltip: 'Clear all notifications',
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.delete_sweep_outlined,
                               color: AquaColors.textMuted,
                               size: 20,
@@ -342,7 +342,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                       ),
                     ),
 
-                    const Divider(color: AquaColors.border, height: 1),
+                    Divider(color: AquaColors.border, height: 1),
 
                     // Notification list
                     Expanded(
@@ -352,7 +352,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                                 _showUnreadOnly
                                     ? 'No unread notifications'
                                     : 'No notifications',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AquaColors.textSecondary,
                                   fontSize: 14,
                                 ),
@@ -463,7 +463,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                     margin: const EdgeInsets.only(top: 6, right: 10),
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AquaColors.accent,
                       shape: BoxShape.circle,
                     ),
@@ -527,7 +527,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                                     AquaColors.error.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'OVERDUE',
                                 style: TextStyle(
                                   color: AquaColors.error,
@@ -545,7 +545,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                                     .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'COMPLETED',
                                 style: TextStyle(
                                   color: AquaColors.success,
@@ -615,7 +615,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                             Expanded(
                               child: Text(
                                 '• ${reminder.aquariumName}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AquaColors.textMuted,
                                   fontSize: 11.5,
                                 ),
@@ -636,7 +636,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                     if (!isRead)
                       IconButton(
                         tooltip: 'Mark as read',
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.mark_chat_read_outlined,
                           color: AquaColors.accent,
                           size: 18,
@@ -645,7 +645,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                       ),
                     IconButton(
                       tooltip: 'Dismiss notification',
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
                         color: AquaColors.textMuted,
                         size: 18,
@@ -677,14 +677,14 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: AquaColors.border),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.notifications_none_rounded,
                 color: AquaColors.textMuted,
                 size: 38,
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'No Notifications',
               style: TextStyle(
                 color: AquaColors.textPrimary,
@@ -693,7 +693,7 @@ class _NotificationCentreScreenState extends State<NotificationCentreScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'You are all caught up! When scheduled aquarium maintenance is due, reminder notifications will appear here.',
               style: TextStyle(
                 color: AquaColors.textSecondary,

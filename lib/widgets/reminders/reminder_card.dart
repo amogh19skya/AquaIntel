@@ -108,7 +108,7 @@ class ReminderCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ─── Category Icon Avatar ───
                 Container(
@@ -137,11 +137,13 @@ class ReminderCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Status and Category Badges
-                      Row(
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           // Status Badge
                           _buildStatusBadge(status),
-                          const SizedBox(width: 6),
                           // Category Badge
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -157,6 +159,7 @@ class ReminderCard extends StatelessWidget {
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -172,8 +175,7 @@ class ReminderCard extends StatelessWidget {
                               : AquaColors.textPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          decoration:
-                              isDone ? TextDecoration.lineThrough : null,
+                          // No strikethrough – green checkmark icon conveys completion
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -212,7 +214,7 @@ class ReminderCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           'Completed: $completedStr',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AquaColors.success,
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
@@ -225,7 +227,7 @@ class ReminderCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           'Tank: ${reminder.aquariumName}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AquaColors.textMuted,
                             fontSize: 11,
                           ),
@@ -238,32 +240,41 @@ class ReminderCard extends StatelessWidget {
                 ),
 
                 // ─── Actions ───
-                // Mark as Completed checkbox
-                IconButton(
-                  tooltip: isDone ? 'Mark as Pending' : 'Mark as Completed',
-                  icon: Icon(
-                    isDone
-                        ? Icons.check_circle_rounded
-                        : (isOverdue
-                            ? Icons.radio_button_unchecked_rounded
-                            : Icons.radio_button_unchecked_rounded),
-                    color: isDone
-                        ? AquaColors.success
-                        : (isOverdue ? AquaColors.error : textBlue),
-                    size: 24,
-                  ),
-                  onPressed: () => onToggleCompleted(reminder),
-                ),
-
-                // Delete button
-                IconButton(
-                  tooltip: 'Delete Reminder',
-                  icon: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: AquaColors.textMuted,
-                    size: 20,
-                  ),
-                  onPressed: () => onDelete(reminder),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Mark as Completed toggle
+                    IconButton(
+                      tooltip: isDone ? 'Mark as Pending' : 'Mark as Completed',
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        isDone
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        color: isDone
+                            ? AquaColors.success
+                            : (isOverdue ? AquaColors.error : textBlue),
+                        size: 24,
+                      ),
+                      onPressed: () => onToggleCompleted(reminder),
+                    ),
+                    const SizedBox(height: 4),
+                    // Delete button
+                    IconButton(
+                      tooltip: 'Delete Reminder',
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        Icons.delete_outline_rounded,
+                        color: AquaColors.textMuted,
+                        size: 20,
+                      ),
+                      onPressed: () => onDelete(reminder),
+                    ),
+                  ],
                 ),
               ],
             ),

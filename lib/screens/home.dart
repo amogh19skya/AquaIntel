@@ -93,14 +93,14 @@ class _HomeScreenState extends State<HomeScreen>
                           color: AquaColors.accent.withValues(alpha: 0.25),
                         ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.water_drop,
                         color: AquaColors.accent,
                         size: 18,
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       'AquaIntel',
                       style: TextStyle(
                         color: AquaColors.textPrimary,
@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           right: -2,
                                           child: Container(
                                             padding: const EdgeInsets.all(4),
-                                            decoration: const BoxDecoration(
+                                            decoration: BoxDecoration(
                                               color: AquaColors.error,
                                               shape: BoxShape.circle,
                                             ),
@@ -224,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Welcome Back!',
                       style: TextStyle(
                         color: AquaColors.textPrimary,
@@ -234,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'View your tanks and track key metrics.',
                       style: TextStyle(
                         color: AquaColors.textSecondary,
@@ -271,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen>
                 padding: const EdgeInsets.fromLTRB(20, 30, 20, 0),
                 child: Row(
                   children: [
-                    const Text(
+                    Text(
                       'Your Aquariums',
                       style: TextStyle(
                         color: AquaColors.textPrimary,
@@ -293,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen>
                             color: AquaColors.accent.withValues(alpha: 0.3),
                           ),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
                             Icon(Icons.add, color: AquaColors.accent, size: 14),
                             SizedBox(width: 4),
@@ -322,7 +322,7 @@ class _HomeScreenState extends State<HomeScreen>
                   stream: _aquariumService.getAquariums(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Padding(
+                      return Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
                         child: Center(
                           child: CircularProgressIndicator(
@@ -350,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen>
                             padding: const EdgeInsets.only(bottom: 12),
                             child: Text(
                               '${aquariums.length} tank${aquariums.length != 1 ? 's' : ''}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AquaColors.textMuted,
                                 fontSize: 12,
                               ),
@@ -402,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.auto_awesome,
               color: AquaColors.accent,
               size: 24,
@@ -466,14 +466,14 @@ class _HomeScreenState extends State<HomeScreen>
               shape: BoxShape.circle,
               border: Border.all(color: AquaColors.border),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.water_outlined,
               size: 36,
               color: AquaColors.textMuted,
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'No Aquariums Yet',
             style: TextStyle(
               color: AquaColors.textPrimary,
@@ -482,7 +482,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Tap the + button to add your first aquarium.',
             style: TextStyle(
               color: AquaColors.textSecondary,
@@ -506,9 +506,9 @@ class _HomeScreenState extends State<HomeScreen>
       padding: const EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: [
-          const Icon(Icons.error_outline, size: 48, color: AquaColors.error),
+          Icon(Icons.error_outline, size: 48, color: AquaColors.error),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Could not load aquariums',
             style: TextStyle(
               color: AquaColors.textPrimary,
@@ -519,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 8),
           Text(
             error,
-            style: const TextStyle(
+            style: TextStyle(
               color: AquaColors.textSecondary,
               fontSize: 12,
             ),
@@ -573,14 +573,14 @@ class _HomeScreenState extends State<HomeScreen>
                 color: AquaColors.accent.withValues(alpha: 0.2),
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.fact_check_outlined,
               color: AquaColors.accent,
               size: 22,
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -603,7 +603,7 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
           ),
-          const Icon(
+          Icon(
             Icons.arrow_forward_ios,
             color: AquaColors.textMuted,
             size: 15,

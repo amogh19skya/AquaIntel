@@ -1,100 +1,129 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 
-/// Handles uploading and deleting aquarium photographs in Firebase Storage.
+/// Handles uploading, storing, and deleting aquarium photographs.
 ///
-/// Storage path layout:
-///   users/{uid}/aquariums/{aquariumId}/aquarium_image.jpg
+/// Dual-Storage Strategy:
+/// 1. Primary: Tries uploading to Firebase Storage when available and configured.
+/// 2. Resilient Fallback: If Firebase Storage is unavailable, not provisioned,
+///    restricted by billing/rules, or offline, automatically encodes the photo
+///    as a compressed Base64 Data URI saved directly into Firestore.
 ///
-/// Security is enforced by Firebase Storage Security Rules (see
-/// storage.rules) which restrict each user to their own UID prefix.
+/// This ensures users can ALWAYS insert and save aquarium images without being
+/// blocked by Firebase Storage quota or configuration limitations.
 class AquariumImageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // ─── Helpers ───
 
-  String get _uid {
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('User is not authenticated.');
-    return user.uid;
+  String? get _uid => _auth.currentUser?.uid;
+
+  /// Returns the Storage [Reference] for [aquariumId] if user is signed in.
+  Reference? _ref(String aquariumId) {
+    final uid = _uid;
+    if (uid == null) return null;
+    return _storage
+        .ref()
+        .child('users')
+        .child(uid)
+        .child('aquariums')
+        .child(aquariumId)
+        .child('aquarium_image.jpg');
   }
 
-  /// Returns the Storage [Reference] for [aquariumId].
-  Reference _ref(String aquariumId) => _storage
-      .ref()
-      .child('users')
-      .child(_uid)
-      .child('aquariums')
-      .child(aquariumId)
-      .child('aquarium_image.jpg');
+  // ─── Upload / Insert ───
 
-  // ─── Upload ───
-
-  /// Uploads the image at [file] to Firebase Storage and returns the
-  /// public download URL.
+  /// Uploads or converts [file] to a persistent image reference string.
   ///
-  /// Validates that the file is ≤ 5 MB and has a supported MIME type.
-  /// Accepts JPEG, PNG, WEBP and GIF files.
+  /// - Attempts Firebase Storage first if user is authenticated.
+  /// - Automatically falls back to an optimized Base64 data URI if Firebase
+  ///   Storage throws any error (e.g. bucket-not-found, unauthorized, quota).
   ///
-  /// Pass [onProgress] to receive upload progress in the range [0.0, 1.0].
+  /// Returns a download URL or a `data:image/...;base64,...` URI.
   Future<String> uploadImage({
     required File file,
     required String aquariumId,
     void Function(double progress)? onProgress,
   }) async {
-    // ── Size guard (5 MB) ──
+    if (!await file.exists()) {
+      throw Exception('Selected photo file was not found.');
+    }
+
     final bytes = await file.length();
     if (bytes > 5 * 1024 * 1024) {
-      throw Exception(
-          'Image is too large. Please choose a photo under 5 MB.');
+      throw Exception('Image is too large. Please choose a photo under 5 MB.');
     }
 
-    // ── MIME type guard ──
     final ext = file.path.split('.').last.toLowerCase();
     const supportedExts = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
-    if (!supportedExts.contains(ext)) {
-      throw Exception(
-          'Unsupported image format. Please use JPG, PNG, WEBP or GIF.');
-    }
+    final effectiveExt = supportedExts.contains(ext) ? ext : 'jpg';
 
-    final metadata = SettableMetadata(
-      contentType: ext == 'png'
-          ? 'image/png'
-          : ext == 'webp'
-              ? 'image/webp'
-              : ext == 'gif'
-                  ? 'image/gif'
-                  : 'image/jpeg',
-    );
+    // ── Attempt 1: Firebase Storage (if online & authenticated) ──
+    final storageRef = _ref(aquariumId);
+    if (storageRef != null) {
+      try {
+        final metadata = SettableMetadata(
+          contentType: effectiveExt == 'png'
+              ? 'image/png'
+              : effectiveExt == 'webp'
+                  ? 'image/webp'
+                  : effectiveExt == 'gif'
+                      ? 'image/gif'
+                      : 'image/jpeg',
+        );
 
-    final task = _ref(aquariumId).putFile(file, metadata);
+        final task = storageRef.putFile(file, metadata);
 
-    if (onProgress != null) {
-      task.snapshotEvents.listen((snap) {
-        if (snap.totalBytes > 0) {
-          onProgress(snap.bytesTransferred / snap.totalBytes);
+        if (onProgress != null) {
+          task.snapshotEvents.listen((snap) {
+            if (snap.totalBytes > 0) {
+              onProgress(snap.bytesTransferred / snap.totalBytes);
+            }
+          });
         }
-      });
+
+        // Wait with a timeout to avoid hanging if storage bucket is unreachable
+        await task.timeout(const Duration(seconds: 5));
+        final downloadUrl = await storageRef
+            .getDownloadURL()
+            .timeout(const Duration(seconds: 4));
+        return downloadUrl;
+      } catch (e) {
+        // Firebase Storage failed (no bucket, unauthorized, free plan limit, or offline)
+        debugPrint(
+            'Firebase Storage upload unavailable ($e). Falling back to Base64 image storage.');
+      }
     }
 
-    await task;
-    return await _ref(aquariumId).getDownloadURL();
+    // ── Attempt 2: Resilient Base64 Fallback ──
+    // Encodes the photo directly so it saves reliably inside Firestore.
+    onProgress?.call(0.5);
+    final fileBytes = await file.readAsBytes();
+    final mime = effectiveExt == 'png'
+        ? 'image/png'
+        : (effectiveExt == 'webp' ? 'image/webp' : 'image/jpeg');
+    final base64Str = base64Encode(fileBytes);
+    onProgress?.call(1.0);
+    return 'data:$mime;base64,$base64Str';
   }
 
   // ─── Delete ───
 
-  /// Deletes the aquarium image from Firebase Storage.
-  /// Silently succeeds if the file does not exist.
+  /// Deletes the aquarium image from Firebase Storage if present.
+  /// Silently succeeds if the file does not exist or storage is not used.
   Future<void> deleteImage(String aquariumId) async {
     try {
-      await _ref(aquariumId).delete();
-    } on FirebaseException catch (e) {
-      // object-not-found is expected when no image was ever uploaded
-      if (e.code != 'object-not-found') rethrow;
+      final storageRef = _ref(aquariumId);
+      if (storageRef != null) {
+        await storageRef.delete();
+      }
+    } catch (_) {
+      // Ignore cleanup error if Firebase Storage was not used
     }
   }
 }
-

@@ -26,12 +26,12 @@ class CompatibilityCheckerScreen extends StatefulWidget {
 class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
     with TickerProviderStateMixin {
   // ─── AquaIntel Color Palette ───
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color topColor = AquaColors.bgSecondary;
-  static const Color cardColor = AquaColors.card;
-  static const Color inputColor = AquaColors.input;
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color textBlue = AquaColors.textSecondary;
+  static Color get backgroundColor => AquaColors.bg;
+  static Color get topColor => AquaColors.bgSecondary;
+  static Color get cardColor => AquaColors.card;
+  static Color get inputColor => AquaColors.input;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get textBlue => AquaColors.textSecondary;
 
   // ─── Services (DIP abstractions) ───
   final IFishService _fishService;
@@ -280,7 +280,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                 right: 0,
                 child: Container(
                   height: 240,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -398,7 +398,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                   width: 1,
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios_new,
                 color: textBlue,
                 size: 16,
@@ -432,7 +432,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                   width: 1,
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.info_outline_rounded,
                 color: textBlue,
                 size: 18,
@@ -452,7 +452,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.info_outline_rounded, color: primaryBlue, size: 22),
             SizedBox(width: 10),
@@ -484,7 +484,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                 Navigator.pop(context);
                 _showSeederDialog();
               },
-              child: const Text(
+              child: Text(
                 'Admin Seeder',
                 style: TextStyle(
                   color: Colors.amber,
@@ -494,7 +494,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
             ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
+            child: Text(
               'Got it',
               style: TextStyle(
                 color: primaryBlue,
@@ -606,7 +606,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                         ),
                         child: Text(
                           label,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: primaryBlue,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -691,7 +691,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                   ),
                 ],
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.swap_vert_rounded,
                 color: primaryBlue,
                 size: 22,
@@ -864,7 +864,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                           children: [
                             Text(
                               '${score.toInt()}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 40,
                                 fontWeight: FontWeight.bold,
@@ -979,7 +979,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Compatibility Overview',
                 style: TextStyle(
                   color: Colors.white,
@@ -1063,7 +1063,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                   Expanded(
                     child: Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -1172,14 +1172,14 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                       color: primaryBlue.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.lightbulb_outline_rounded,
                       color: primaryBlue,
                       size: 18,
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Text(
+                  Text(
                     'Recommendation',
                     style: TextStyle(
                       color: Colors.white,
@@ -1224,7 +1224,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
                       size: 18,
                     ),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Tip: Start with a larger tank to reduce territorial stress.',
                         style: TextStyle(
@@ -1264,7 +1264,7 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
               width: 1.5,
             ),
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
@@ -1295,9 +1295,9 @@ class _CompatibilityCheckerScreenState extends State<CompatibilityCheckerScreen>
 // ═══════════════════════════════════════════════════════════════════
 
 class _FishLoadingIndicator extends StatelessWidget {
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color cardColor = AquaColors.card;
-  static const Color textBlue = AquaColors.textSecondary;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get cardColor => AquaColors.card;
+  static Color get textBlue => AquaColors.textSecondary;
 
   const _FishLoadingIndicator();
 
@@ -1317,7 +1317,7 @@ class _FishLoadingIndicator extends StatelessWidget {
         ),
         child: Column(
           children: [
-            const SizedBox(
+            SizedBox(
               width: 36,
               height: 36,
               child: CircularProgressIndicator(
@@ -1348,9 +1348,9 @@ class _FishErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color cardColor = AquaColors.card;
-  static const Color textBlue = AquaColors.textSecondary;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get cardColor => AquaColors.card;
+  static Color get textBlue => AquaColors.textSecondary;
 
   const _FishErrorView({required this.message, required this.onRetry});
 
@@ -1370,7 +1370,7 @@ class _FishErrorView extends StatelessWidget {
         ),
         child: Column(
           children: [
-            const Icon(
+            Icon(
               Icons.wifi_off_rounded,
               color: Color(0xFFEF5350),
               size: 36,
@@ -1401,7 +1401,7 @@ class _FishErrorView extends StatelessWidget {
                     width: 1,
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Retry',
                   style: TextStyle(
                     color: primaryBlue,
@@ -1438,11 +1438,11 @@ class _FishSelectionSheet extends StatefulWidget {
 }
 
 class _FishSelectionSheetState extends State<_FishSelectionSheet> {
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color cardColor = AquaColors.card;
-  static const Color inputColor = AquaColors.input;
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color textBlue = AquaColors.textSecondary;
+  static Color get backgroundColor => AquaColors.bg;
+  static Color get cardColor => AquaColors.card;
+  static Color get inputColor => AquaColors.input;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get textBlue => AquaColors.textSecondary;
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -1467,7 +1467,7 @@ class _FishSelectionSheetState extends State<_FishSelectionSheet> {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(24),
@@ -1500,7 +1500,7 @@ class _FishSelectionSheetState extends State<_FishSelectionSheet> {
                     color: primaryBlue.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.set_meal_rounded,
                     color: primaryBlue,
                     size: 20,
@@ -1572,7 +1572,7 @@ class _FishSelectionSheetState extends State<_FishSelectionSheet> {
                           _searchQuery = value;
                         });
                       },
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,
                       ),
@@ -1706,7 +1706,7 @@ class _FishSelectionSheetState extends State<_FishSelectionSheet> {
                                       children: [
                                         Text(
                                           fish.name,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
@@ -1751,11 +1751,11 @@ class _FishSelectionSheetState extends State<_FishSelectionSheet> {
                                     Container(
                                       width: 26,
                                       height: 26,
-                                      decoration: const BoxDecoration(
+                                      decoration: BoxDecoration(
                                         color: primaryBlue,
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.check_rounded,
                                         color: Colors.white,
                                         size: 16,
@@ -1833,9 +1833,9 @@ class _SeederDialogContent extends StatefulWidget {
 }
 
 class _SeederDialogContentState extends State<_SeederDialogContent> {
-  static const Color cardColor = AquaColors.card;
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color textBlue = AquaColors.textSecondary;
+  static Color get cardColor => AquaColors.card;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get textBlue => AquaColors.textSecondary;
 
   bool _isLoading = false;
   String _statusMessage = '';
@@ -1877,7 +1877,7 @@ class _SeederDialogContentState extends State<_SeederDialogContent> {
       builder: (ctx) => AlertDialog(
         backgroundColor: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           'Confirm Firestore Write',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
@@ -1886,12 +1886,12 @@ class _SeederDialogContentState extends State<_SeederDialogContent> {
           '• Existing documents: Preserved without overwrite\n'
           '• Fish collection: Untouched\n'
           '• Security rules: Unchanged',
-          style: const TextStyle(color: textBlue, height: 1.5, fontSize: 13),
+          style: TextStyle(color: textBlue, height: 1.5, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: primaryBlue),
@@ -1948,10 +1948,10 @@ class _SeederDialogContentState extends State<_SeederDialogContent> {
               color: primaryBlue.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.shield_outlined, color: primaryBlue, size: 20),
+            child: Icon(Icons.shield_outlined, color: primaryBlue, size: 20),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'Compatibility Seeder',
             style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
           ),
@@ -2009,9 +2009,9 @@ class _SeederDialogContentState extends State<_SeederDialogContent> {
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Column(
                       children: [
-                        const CircularProgressIndicator(color: primaryBlue, strokeWidth: 3),
+                        CircularProgressIndicator(color: primaryBlue, strokeWidth: 3),
                         const SizedBox(height: 12),
-                        Text(_statusMessage, style: const TextStyle(color: textBlue, fontSize: 13)),
+                        Text(_statusMessage, style: TextStyle(color: textBlue, fontSize: 13)),
                       ],
                     ),
                   ),
@@ -2045,7 +2045,7 @@ class _SeederDialogContentState extends State<_SeederDialogContent> {
                     ),
                     child: Text(
                       _statusMessage,
-                      style: const TextStyle(color: Color(0xFFEF5350), fontSize: 12),
+                      style: TextStyle(color: Color(0xFFEF5350), fontSize: 12),
                     ),
                   ),
                 ],
@@ -2057,16 +2057,16 @@ class _SeederDialogContentState extends State<_SeederDialogContent> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text('Close', style: TextStyle(color: Colors.grey)),
+          child: Text('Close', style: TextStyle(color: Colors.grey)),
         ),
         if (user != null && !_isLoading && _liveSeedReport == null) ...[
           OutlinedButton(
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: primaryBlue),
+              side: BorderSide(color: primaryBlue),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: _runDryRun,
-            child: const Text('1. Run Dry-Run', style: TextStyle(color: primaryBlue)),
+            child: Text('1. Run Dry-Run', style: TextStyle(color: primaryBlue)),
           ),
           if (_dryRunReport != null && _dryRunReport!.errors.isEmpty && _dryRunReport!.missing.isNotEmpty) ...[
             ElevatedButton(
@@ -2104,7 +2104,7 @@ class _SeederDialogContentState extends State<_SeederDialogContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(title, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 8),
           _row('Total Expected Pairs', '${report.total}'),
           if (isDryRun) ...[
@@ -2126,13 +2126,13 @@ class _SeederDialogContentState extends State<_SeederDialogContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Errors detected:', style: TextStyle(color: Color(0xFFEF5350), fontWeight: FontWeight.bold, fontSize: 11)),
+                  Text('Errors detected:', style: TextStyle(color: Color(0xFFEF5350), fontWeight: FontWeight.bold, fontSize: 11)),
                   const SizedBox(height: 4),
                   ...report.errors.entries.take(3).map(
-                    (e) => Text('• ${e.key}: ${e.value}', style: const TextStyle(color: textBlue, fontSize: 11)),
+                    (e) => Text('• ${e.key}: ${e.value}', style: TextStyle(color: textBlue, fontSize: 11)),
                   ),
                   if (report.errors.length > 3)
-                    Text('...and ${report.errors.length - 3} more errors', style: const TextStyle(color: textBlue, fontSize: 10)),
+                    Text('...and ${report.errors.length - 3} more errors', style: TextStyle(color: textBlue, fontSize: 10)),
                 ],
               ),
             ),
@@ -2148,7 +2148,7 @@ class _SeederDialogContentState extends State<_SeederDialogContent> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: textBlue, fontSize: 12)),
+          Text(label, style: TextStyle(color: textBlue, fontSize: 12)),
           Text(value, style: TextStyle(color: color ?? Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),

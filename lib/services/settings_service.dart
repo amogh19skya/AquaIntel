@@ -116,7 +116,7 @@ class SettingsService implements ISettingsService {
   @override
   Future<bool> getDarkMode() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_kDarkMode) ?? true;
+    return prefs.getBool(_kDarkMode) ?? false;
   }
 
   @override

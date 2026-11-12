@@ -35,14 +35,15 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
   String _savingStatus = 'Save Aquarium';
 
   File? _selectedImageFile;
+  String? _directImageUrl;
 
   // AquaIntel colours – mapped to shared theme tokens
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color cardColor = AquaColors.card;
-  static const Color inputColor = AquaColors.input;
-  static const Color primaryColor = AquaColors.accent;
-  static const Color textColor = AquaColors.textPrimary;
-  static const Color secondaryTextColor = AquaColors.textSecondary;
+  static Color get backgroundColor => AquaColors.bg;
+  static Color get cardColor => AquaColors.card;
+  static Color get inputColor => AquaColors.input;
+  static Color get primaryColor => AquaColors.accent;
+  static Color get textColor => AquaColors.textPrimary;
+  static Color get secondaryTextColor => AquaColors.textSecondary;
 
   // ─── Volume Calculation ───
   void _calculateVolume() {
@@ -98,11 +99,13 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
           onProgress: (progress) {
             if (mounted) {
               setState(() {
-                _savingStatus = 'Uploading photo (${(progress * 100).toInt()}%)...';
+                _savingStatus = 'Saving photo (${(progress * 100).toInt()}%)...';
               });
             }
           },
         );
+      } else if (_directImageUrl != null && _directImageUrl!.trim().isNotEmpty) {
+        imageUrl = _directImageUrl!.trim();
       }
 
       if (mounted) {
@@ -167,7 +170,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
         backgroundColor: backgroundColor,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
+        title: Text(
           'Add Aquarium',
           style: TextStyle(
             color: textColor,
@@ -184,7 +187,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
-                const Text(
+                Text(
                   'Aquarium Information',
                   style: TextStyle(
                     color: textColor,
@@ -195,7 +198,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
 
                 const SizedBox(height: 8),
 
-                const Text(
+                Text(
                   'Add your aquarium details to manage your tank.',
                   style: TextStyle(
                     color: secondaryTextColor,
@@ -209,10 +212,22 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
 
                 AquariumImagePicker(
                   onImagePicked: (file) {
-                    setState(() => _selectedImageFile = file);
+                    setState(() {
+                      _selectedImageFile = file;
+                      _directImageUrl = null;
+                    });
+                  },
+                  onImageUrlProvided: (url) {
+                    setState(() {
+                      _directImageUrl = url;
+                      _selectedImageFile = null;
+                    });
                   },
                   onImageRemoved: () {
-                    setState(() => _selectedImageFile = null);
+                    setState(() {
+                      _selectedImageFile = null;
+                      _directImageUrl = null;
+                    });
                   },
                 ),
 
@@ -234,7 +249,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
 
                 const SizedBox(height: 25),
 
-                const Text(
+                Text(
                   'Tank Dimensions',
                   style: TextStyle(
                     color: textColor,
@@ -245,7 +260,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
 
                 const SizedBox(height: 6),
 
-                const Text(
+                Text(
                   'Enter the length, width and height of your aquarium.',
                   style: TextStyle(
                     color: secondaryTextColor,
@@ -303,8 +318,8 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
                   height: 52,
                   child: ElevatedButton.icon(
                     onPressed: _calculateVolume,
-                    icon: const Icon(Icons.calculate),
-                    label: const Text(
+                    icon: Icon(Icons.calculate),
+                    label: Text(
                       'Calculate Tank Volume',
                       style: TextStyle(
                         fontSize: 15,
@@ -344,14 +359,14 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
                             color: primaryColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.water_drop,
                             color: primaryColor,
                             size: 26,
                           ),
                         ),
                         const SizedBox(width: 15),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -376,7 +391,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
                         ),
                         Text(
                           '${_volumeLitres!.toStringAsFixed(1)} L',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: primaryColor,
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -473,7 +488,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           color: textColor,
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -493,10 +508,10 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
       controller: controller,
       validator: validator,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: secondaryTextColor),
+        hintStyle: TextStyle(color: secondaryTextColor),
         prefixIcon: Icon(icon, color: secondaryTextColor),
         filled: true,
         fillColor: inputColor,
@@ -506,7 +521,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: primaryColor, width: 1.5),
+          borderSide: BorderSide(color: primaryColor, width: 1.5),
         ),
         errorStyle: const TextStyle(color: Colors.redAccent),
       ),
@@ -520,10 +535,10 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
     return TextFormField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: secondaryTextColor),
+        labelStyle: TextStyle(color: secondaryTextColor),
         filled: true,
         fillColor: inputColor,
         border: OutlineInputBorder(
@@ -532,7 +547,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: primaryColor),
+          borderSide: BorderSide(color: primaryColor),
         ),
         errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 10),
       ),
@@ -556,7 +571,7 @@ class _AddAquariumScreenState extends State<AddAquariumScreen> {
       initialValue: value,
       dropdownColor: cardColor,
       iconEnabledColor: secondaryTextColor,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: secondaryTextColor),
         filled: true,

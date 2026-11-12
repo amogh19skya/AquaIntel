@@ -23,13 +23,13 @@ class ReminderFormScreen extends StatefulWidget {
 class _ReminderFormScreenState extends State<ReminderFormScreen>
     with SingleTickerProviderStateMixin {
   // ─── AquaIntel colour palette ───
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color topColor = AquaColors.bgSecondary;
-  static const Color cardColor = AquaColors.card;
-  static const Color inputColor = AquaColors.input;
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color textBlue = AquaColors.textSecondary;
-  static const Color accentGreen = AquaColors.success;
+  static Color get backgroundColor => AquaColors.bg;
+  static Color get topColor => AquaColors.bgSecondary;
+  static Color get cardColor => AquaColors.card;
+  static Color get inputColor => AquaColors.input;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get textBlue => AquaColors.textSecondary;
+  static Color get accentGreen => AquaColors.success;
 
   // ─── Services ───
   final _reminderService = ReminderService();
@@ -133,13 +133,13 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
   Widget _pickerTheme(Widget? child) {
     return Theme(
       data: Theme.of(context).copyWith(
-        colorScheme: const ColorScheme.dark(
+        colorScheme: ColorScheme.dark(
           primary: primaryBlue,
           onPrimary: Colors.white,
           surface: cardColor,
           onSurface: Colors.white,
         ),
-        dialogTheme: const DialogThemeData(backgroundColor: backgroundColor),
+        dialogTheme: DialogThemeData(backgroundColor: backgroundColor),
       ),
       child: child!,
     );
@@ -348,7 +348,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
                 right: 0,
                 child: Container(
                   height: 180,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -409,14 +409,14 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
                   width: 1,
                 ),
               ),
-              child: const Icon(Icons.arrow_back_ios_new, color: textBlue, size: 16),
+              child: Icon(Icons.arrow_back_ios_new, color: textBlue, size: 16),
             ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
               _isEditMode ? 'Edit Reminder' : 'Schedule Maintenance',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -431,7 +431,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
               color: primaryBlue.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.alarm_add_rounded, color: primaryBlue, size: 20),
+            child: Icon(Icons.alarm_add_rounded, color: primaryBlue, size: 20),
           ),
         ],
       ),
@@ -518,7 +518,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: textBlue.withValues(alpha: 0.45), fontSize: 13),
@@ -530,7 +530,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: primaryBlue, width: 1.5),
+          borderSide: BorderSide(color: primaryBlue, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
@@ -545,7 +545,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
           color: inputColor,
           borderRadius: BorderRadius.circular(14),
         ),
-        child: const Center(
+        child: Center(
           child: SizedBox(
             width: 20,
             height: 20,
@@ -713,7 +713,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
           const SizedBox(width: 14),
           Text(
             label,
-            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
           ),
           const Spacer(),
           Icon(Icons.chevron_right, color: textBlue.withValues(alpha: 0.5), size: 20),
@@ -736,7 +736,7 @@ class _ReminderFormScreenState extends State<ReminderFormScreen>
                 side: BorderSide(color: primaryBlue.withValues(alpha: 0.35), width: 1.5),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(color: primaryBlue, fontSize: 15, fontWeight: FontWeight.w600),
               ),

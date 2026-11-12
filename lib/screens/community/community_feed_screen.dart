@@ -40,14 +40,14 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                           color: AquaColors.accent.withValues(alpha: 0.25),
                         ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.people_outline,
                         color: AquaColors.accent,
                         size: 18,
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       'Community',
                       style: TextStyle(
                         color: AquaColors.textPrimary,
@@ -62,7 +62,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             ),
 
             // ─── Subtitle ───
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: Column(
@@ -98,7 +98,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   stream: _svc.feedStream(),
                   builder: (context, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
-                      return const Padding(
+                      return Padding(
                         padding: EdgeInsets.symmetric(vertical: 60),
                         child: Center(
                           child: CircularProgressIndicator(color: AquaColors.accent),
@@ -172,10 +172,10 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: AquaColors.border),
             ),
-            child: const Icon(Icons.people_outline, size: 36, color: AquaColors.textMuted),
+            child: Icon(Icons.people_outline, size: 36, color: AquaColors.textMuted),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'No Posts Yet',
             style: TextStyle(
               color: AquaColors.textPrimary,
@@ -184,7 +184,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Be the first to share your aquarium\nwith the community!',
             style: TextStyle(color: AquaColors.textSecondary, fontSize: 14),
             textAlign: TextAlign.center,
@@ -208,9 +208,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       padding: const EdgeInsets.symmetric(vertical: 60),
       child: Column(
         children: [
-          const Icon(Icons.error_outline, size: 48, color: AquaColors.error),
+          Icon(Icons.error_outline, size: 48, color: AquaColors.error),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Could not load the feed',
             style: TextStyle(
               color: AquaColors.textPrimary,
@@ -221,7 +221,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           const SizedBox(height: 8),
           Text(
             error,
-            style: const TextStyle(color: AquaColors.textSecondary, fontSize: 12),
+            style: TextStyle(color: AquaColors.textSecondary, fontSize: 12),
             textAlign: TextAlign.center,
           ),
         ],

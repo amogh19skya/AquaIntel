@@ -24,12 +24,12 @@ class _SettingScreenState extends State<SettingScreen>
   // AquaIntel colours
   // ─────────────────────────────────────────────
 
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color surfaceColor = AquaColors.card;
-  static const Color dividerColor = AquaColors.border;
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color textSecondary = AquaColors.textSecondary;
-  static const Color dangerColor = AquaColors.error;
+  static Color get backgroundColor => AquaColors.bg;
+  static Color get surfaceColor => AquaColors.card;
+  static Color get dividerColor => AquaColors.border;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get textSecondary => AquaColors.textSecondary;
+  static Color get dangerColor => AquaColors.error;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -41,7 +41,7 @@ class _SettingScreenState extends State<SettingScreen>
   bool _notificationsEnabled = true;
   bool _feedingAlerts = true;
   bool _waterChangeAlerts = true;
-  bool _darkMode = true;
+  bool _darkMode = false;
   bool _soundEnabled = false;
   bool _hapticFeedback = true;
   bool _autoBackup = false;
@@ -287,6 +287,9 @@ class _SettingScreenState extends State<SettingScreen>
                               await _haptic();
                               setState(() => _darkMode = value);
                               await _settingsService.setDarkMode(value);
+                              // Apply theme change immediately
+                              themeNotifier.value =
+                                  value ? ThemeMode.dark : ThemeMode.light;
                             },
                           ),
 
@@ -482,10 +485,10 @@ class _SettingScreenState extends State<SettingScreen>
 
           const SizedBox(width: 4),
 
-          const Text(
+          Text(
             'Settings',
             style: TextStyle(
-              color: Colors.white,
+              color: AquaColors.textPrimary,
               fontSize: 23,
               fontWeight: FontWeight.w600,
             ),
@@ -565,7 +568,7 @@ class _SettingScreenState extends State<SettingScreen>
                       right: -2,
                       child: Container(
                         padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: primaryBlue,
                           shape: BoxShape.circle,
                         ),
@@ -592,8 +595,8 @@ class _SettingScreenState extends State<SettingScreen>
                   _displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AquaColors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -721,8 +724,8 @@ class _SettingScreenState extends State<SettingScreen>
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AquaColors.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -788,8 +791,8 @@ class _SettingScreenState extends State<SettingScreen>
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AquaColors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -840,19 +843,19 @@ class _SettingScreenState extends State<SettingScreen>
 
           const SizedBox(width: 14),
 
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Temperature Unit',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AquaColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   'Choose how temperature is displayed',
                   style: TextStyle(
@@ -1003,7 +1006,7 @@ class _SettingScreenState extends State<SettingScreen>
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
           ),
         ),
@@ -1094,7 +1097,7 @@ class _SettingScreenState extends State<SettingScreen>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
-        title: const Text(
+        title: Text(
           'Delete Account',
           style: TextStyle(
             color: dangerColor,
@@ -1127,7 +1130,7 @@ class _SettingScreenState extends State<SettingScreen>
                 'Account deletion requested',
               );
             },
-            child: const Text(
+            child: Text(
               'Delete',
               style: TextStyle(
                 color: dangerColor,
@@ -1185,7 +1188,7 @@ class _SettingScreenState extends State<SettingScreen>
                 'Cache cleared successfully',
               );
             },
-            child: const Text(
+            child: Text(
               'Clear',
               style: TextStyle(
                 color: primaryBlue,

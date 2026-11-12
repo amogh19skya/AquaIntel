@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/community_post.dart';
 import '../../services/community_service.dart';
 import '../../theme/app_theme.dart';
+import 'author_avatar.dart';
 import 'like_button.dart';
 import 'comment_sheet.dart';
 
@@ -31,11 +32,6 @@ class PostCard extends StatelessWidget {
     return DateFormat('d MMM').format(dt);
   }
 
-  String get _initials {
-    final parts = post.authorName.trim().split(' ');
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return post.authorName.isNotEmpty ? post.authorName[0].toUpperCase() : '?';
-  }
 
   // ─── Build ───
 
@@ -77,27 +73,11 @@ class PostCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
       child: Row(
         children: [
-          // Avatar circle
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AquaColors.accent.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AquaColors.accent.withValues(alpha: 0.25),
-              ),
-            ),
-            child: Center(
-              child: Text(
-                _initials,
-                style: const TextStyle(
-                  color: AquaColors.accent,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+          // Avatar
+          AuthorAvatar(
+            authorUid: post.authorUid,
+            authorName: post.authorName,
+            size: 40,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -106,7 +86,7 @@ class PostCard extends StatelessWidget {
               children: [
                 Text(
                   post.authorName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AquaColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -117,7 +97,7 @@ class PostCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   _timeAgo(post.createdAt),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AquaColors.textMuted,
                     fontSize: 11,
                   ),
@@ -133,11 +113,11 @@ class PostCard extends StatelessWidget {
 
   Widget _buildOwnerMenu(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_horiz, color: AquaColors.textMuted, size: 20),
+      icon: Icon(Icons.more_horiz, color: AquaColors.textMuted, size: 20),
       color: AquaColors.cardElevated,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       itemBuilder: (_) => [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'edit',
           child: Row(children: [
             Icon(Icons.edit_outlined, color: AquaColors.accent, size: 18),
@@ -168,7 +148,7 @@ class PostCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Text(
         post.caption,
-        style: const TextStyle(
+        style: TextStyle(
           color: AquaColors.textPrimary,
           fontSize: 14,
           height: 1.5,
@@ -204,7 +184,7 @@ class PostCard extends StatelessWidget {
                   color: AquaColors.accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.water, color: AquaColors.accent, size: 16),
+                child: Icon(Icons.water, color: AquaColors.accent, size: 16),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -214,7 +194,7 @@ class PostCard extends StatelessWidget {
                     if (visible.contains('name'))
                       Text(
                         snap.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AquaColors.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -233,7 +213,7 @@ class PostCard extends StatelessWidget {
                         ),
                         child: Text(
                           snap.type.toUpperCase(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AquaColors.accent,
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
@@ -249,7 +229,7 @@ class PostCard extends StatelessWidget {
           // Detail rows
           if (visible.contains('volumeLitres')) ...[
             const SizedBox(height: 10),
-            const Divider(color: AquaColors.border, height: 1),
+            Divider(color: AquaColors.border, height: 1),
             const SizedBox(height: 10),
             _detailRow('Volume', '${snap.volumeLitres.toStringAsFixed(1)} L'),
           ],
@@ -269,12 +249,12 @@ class PostCard extends StatelessWidget {
       children: [
         Text(
           '$label: ',
-          style: const TextStyle(color: AquaColors.textMuted, fontSize: 12),
+          style: TextStyle(color: AquaColors.textMuted, fontSize: 12),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               color: AquaColors.textSecondary,
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -314,14 +294,14 @@ class PostCard extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AquaColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Edit Caption',
+        title: Text('Edit Caption',
             style: TextStyle(color: AquaColors.textPrimary, fontWeight: FontWeight.bold)),
         content: TextField(
           controller: ctrl,
           maxLength: 500,
           maxLines: 4,
-          style: const TextStyle(color: AquaColors.textPrimary, fontSize: 14),
-          decoration: const InputDecoration(
+          style: TextStyle(color: AquaColors.textPrimary, fontSize: 14),
+          decoration: InputDecoration(
             hintText: 'What\'s on your mind?',
             counterStyle: TextStyle(color: AquaColors.textMuted),
           ),
@@ -362,14 +342,14 @@ class PostCard extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AquaColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Post?',
+        title: Text('Delete Post?',
             style: TextStyle(color: AquaColors.textPrimary, fontWeight: FontWeight.bold)),
-        content: const Text(
+        content: Text(
           'This will permanently delete your post, all likes and all comments. This cannot be undone.',
           style: TextStyle(color: AquaColors.textSecondary, fontSize: 14, height: 1.5),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AquaColors.error),
             onPressed: () async {
@@ -412,14 +392,14 @@ class _CommentCountButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.chat_bubble_outline_rounded,
+          Icon(Icons.chat_bubble_outline_rounded,
               color: AquaColors.textMuted, size: 18),
           const SizedBox(width: 5),
           StreamBuilder<int>(
             stream: CommunityService().commentCountStream(postId),
             builder: (context, snap) => Text(
               snap.hasData ? '${snap.data}' : '--',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AquaColors.textSecondary,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,

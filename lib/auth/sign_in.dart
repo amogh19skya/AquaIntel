@@ -24,12 +24,12 @@ class _SignInScreenState extends State<SignInScreen>
   bool _isLoading = false;
 
   // AquaIntel colors
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color topColor = AquaColors.bgSecondary;
-  static const Color cardColor = AquaColors.card;
-  static const Color inputColor = AquaColors.input;
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color textBlue = AquaColors.textSecondary;
+  static Color get backgroundColor => AquaColors.bg;
+  static Color get topColor => AquaColors.bgSecondary;
+  static Color get cardColor => AquaColors.card;
+  static Color get inputColor => AquaColors.input;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get textBlue => AquaColors.textSecondary;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -106,12 +106,12 @@ class _SignInScreenState extends State<SignInScreen>
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            Icon(Icons.error_outline, color: Colors.white, size: 18),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(fontSize: 13),
+                style: TextStyle(fontSize: 13),
               ),
             ),
           ],
@@ -140,7 +140,7 @@ class _SignInScreenState extends State<SignInScreen>
               alignment: Alignment.topCenter,
               child: Container(
                 height: 85,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: topColor,
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(100),
@@ -192,7 +192,7 @@ class _SignInScreenState extends State<SignInScreen>
                                 ),
                               ],
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.water,
                               color: Colors.white,
                               size: 26,
@@ -204,7 +204,7 @@ class _SignInScreenState extends State<SignInScreen>
                           // =========================
                           // APP NAME
                           // =========================
-                          const Text(
+                          Text(
                             'AquaIntel',
                             style: TextStyle(
                               color: Colors.white,
@@ -216,7 +216,7 @@ class _SignInScreenState extends State<SignInScreen>
 
                           const SizedBox(height: 4),
 
-                          const Text(
+                          Text(
                             'Your smart management system',
                             style: TextStyle(
                               color: textBlue,
@@ -254,7 +254,7 @@ class _SignInScreenState extends State<SignInScreen>
                               children: [
 
                                 // Welcome
-                                const Text(
+                                Text(
                                   'Welcome back',
                                   style: TextStyle(
                                     color: Colors.white,
@@ -265,7 +265,7 @@ class _SignInScreenState extends State<SignInScreen>
 
                                 const SizedBox(height: 5),
 
-                                const Text(
+                                Text(
                                   'Sign in to your account to continue',
                                   style: TextStyle(
                                     color: textBlue,
@@ -278,7 +278,7 @@ class _SignInScreenState extends State<SignInScreen>
                                 // =========================
                                 // EMAIL LABEL
                                 // =========================
-                                const Text(
+                                Text(
                                   'Email',
                                   style: TextStyle(
                                     color: textBlue,
@@ -293,16 +293,16 @@ class _SignInScreenState extends State<SignInScreen>
                                   controller: emailController,
                                   keyboardType: TextInputType.emailAddress,
                                   textInputAction: TextInputAction.next,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
                                   ),
                                   decoration: InputDecoration(
                                     hintText: 'you@example.com',
-                                    hintStyle: const TextStyle(
+                                    hintStyle: TextStyle(
                                       color: AquaColors.textMuted,
                                     ),
-                                    prefixIcon: const Icon(
+                                    prefixIcon: Icon(
                                       Icons.email_outlined,
                                       color: AquaColors.textSecondary,
                                       size: 19,
@@ -311,40 +311,40 @@ class _SignInScreenState extends State<SignInScreen>
                                     fillColor: inputColor,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AquaColors.border,
                                         width: 1,
                                       ),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AquaColors.border,
                                         width: 1,
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: primaryBlue,
                                         width: 1.5,
                                       ),
                                     ),
                                     errorBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AquaColors.error,
                                         width: 1,
                                       ),
                                     ),
                                     focusedErrorBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AquaColors.error,
                                         width: 1.5,
                                       ),
                                     ),
-                                    errorStyle: const TextStyle(
+                                    errorStyle: TextStyle(
                                       fontSize: 11,
                                       color: AquaColors.error,
                                     ),
@@ -371,7 +371,7 @@ class _SignInScreenState extends State<SignInScreen>
                                 // =========================
                                 // PASSWORD LABEL
                                 // =========================
-                                const Text(
+                                Text(
                                   'Password',
                                   style: TextStyle(
                                     color: textBlue,
@@ -387,16 +387,16 @@ class _SignInScreenState extends State<SignInScreen>
                                   obscureText: obscurePassword,
                                   textInputAction: TextInputAction.done,
                                   onFieldSubmitted: (_) => _signIn(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
                                   ),
                                   decoration: InputDecoration(
                                     hintText: 'Enter your password',
-                                    hintStyle: const TextStyle(
+                                    hintStyle: TextStyle(
                                       color: AquaColors.textMuted,
                                     ),
-                                    prefixIcon: const Icon(
+                                    prefixIcon: Icon(
                                       Icons.lock_outline,
                                       color: AquaColors.textSecondary,
                                       size: 19,
@@ -419,40 +419,40 @@ class _SignInScreenState extends State<SignInScreen>
                                     fillColor: inputColor,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AquaColors.border,
                                         width: 1,
                                       ),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AquaColors.border,
                                         width: 1,
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: primaryBlue,
                                         width: 1.5,
                                       ),
                                     ),
                                     errorBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AquaColors.error,
                                         width: 1,
                                       ),
                                     ),
                                     focusedErrorBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(13),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AquaColors.error,
                                         width: 1.5,
                                       ),
                                     ),
-                                    errorStyle: const TextStyle(
+                                    errorStyle: TextStyle(
                                       fontSize: 11,
                                       color: AquaColors.error,
                                     ),
@@ -479,7 +479,7 @@ class _SignInScreenState extends State<SignInScreen>
                                     onTap: () {
                                       // TODO: Navigate to forgot password
                                     },
-                                    child: const Text(
+                                    child: Text(
                                       'Forgot password?',
                                       style: TextStyle(
                                         color: primaryBlue,
@@ -520,7 +520,7 @@ class _SignInScreenState extends State<SignInScreen>
                                               strokeWidth: 2,
                                             ),
                                           )
-                                        : const Text(
+                                        : Text(
                                             'Sign In',
                                             style: TextStyle(
                                               fontSize: 13,
@@ -538,7 +538,7 @@ class _SignInScreenState extends State<SignInScreen>
                                 Center(
                                   child: RichText(
                                     text: TextSpan(
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: textBlue,
                                         fontSize: 12,
                                       ),
@@ -554,7 +554,7 @@ class _SignInScreenState extends State<SignInScreen>
                                                 AppRoutes.signUp,
                                               );
                                             },
-                                            child: const Text(
+                                            child: Text(
                                               'Sign up',
                                               style: TextStyle(
                                                 color: primaryBlue,

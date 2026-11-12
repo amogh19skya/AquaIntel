@@ -32,9 +32,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color bgColor = AquaColors.bg;
-    const Color curveColor = AquaColors.bgSecondary;
-    const Color subtitleColor = AquaColors.textSecondary;
+final Color bgColor = AquaColors.bg;
+final Color curveColor = AquaColors.bgSecondary;
+final Color subtitleColor = AquaColors.textSecondary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -79,7 +79,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 const SizedBox(height: 10),
 
                 // Tagline[cite: 1]
-                const Text(
+                Text(
                   'Your smart management system',
                   style: TextStyle(
                     color: subtitleColor,

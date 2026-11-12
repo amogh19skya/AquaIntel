@@ -93,7 +93,7 @@ class InAppNotificationsSheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.75,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AquaColors.bgSecondary,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         border: Border(
@@ -121,13 +121,13 @@ class InAppNotificationsSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.notifications_active_outlined,
                   color: AquaColors.accent,
                   size: 22,
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Reminder Notifications',
                   style: TextStyle(
                     color: AquaColors.textPrimary,
@@ -146,7 +146,7 @@ class InAppNotificationsSheet extends StatelessWidget {
                     ),
                     child: Text(
                       '${active.length}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AquaColors.accent,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -164,13 +164,13 @@ class InAppNotificationsSheet extends StatelessWidget {
                           builder: (_) => const ReminderScreen()),
                     );
                   },
-                  child: const Text('View All'),
+                  child: Text('View All'),
                 ),
               ],
             ),
           ),
 
-          const Divider(color: AquaColors.border, height: 1),
+          Divider(color: AquaColors.border, height: 1),
 
           // Notification List
           Flexible(
@@ -189,14 +189,14 @@ class InAppNotificationsSheet extends StatelessWidget {
                             shape: BoxShape.circle,
                             border: Border.all(color: AquaColors.border),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.notifications_off_outlined,
                             color: AquaColors.textMuted,
                             size: 28,
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'No Active Notifications',
                           style: TextStyle(
                             color: AquaColors.textPrimary,
@@ -205,7 +205,7 @@ class InAppNotificationsSheet extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'You are all caught up with your aquarium tasks! 🐠',
                           style: TextStyle(
                             color: AquaColors.textSecondary,
@@ -312,7 +312,7 @@ class InAppNotificationsSheet extends StatelessWidget {
                                               borderRadius:
                                                   BorderRadius.circular(6),
                                             ),
-                                            child: const Text(
+                                            child: Text(
                                               'OVERDUE',
                                               style: TextStyle(
                                                 color: AquaColors.error,
@@ -328,7 +328,7 @@ class InAppNotificationsSheet extends StatelessWidget {
                                     // Title
                                     Text(
                                       reminder.title,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: AquaColors.textPrimary,
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
@@ -339,7 +339,7 @@ class InAppNotificationsSheet extends StatelessWidget {
                                     // Message
                                     Text(
                                       message,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: AquaColors.textSecondary,
                                         fontSize: 13,
                                         height: 1.3,
@@ -382,7 +382,7 @@ class InAppNotificationsSheet extends StatelessWidget {
                             // Mark Completed Action Button
                             IconButton(
                               tooltip: 'Mark as Completed',
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.check_circle_outline_rounded,
                                 color: AquaColors.accent,
                                 size: 24,

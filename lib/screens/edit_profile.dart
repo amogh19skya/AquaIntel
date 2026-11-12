@@ -19,12 +19,12 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen>
     with SingleTickerProviderStateMixin {
   // ─── AquaIntel Color Palette ───
-  static const Color backgroundColor = AquaColors.bg;
-  static const Color topColor = AquaColors.bgSecondary;
-  static const Color cardColor = AquaColors.card;
-  static const Color primaryBlue = AquaColors.accent;
-  static const Color textBlue = AquaColors.textSecondary;
-  static const Color surfaceDark = AquaColors.input;
+  static Color get backgroundColor => AquaColors.bg;
+  static Color get topColor => AquaColors.bgSecondary;
+  static Color get cardColor => AquaColors.card;
+  static Color get primaryBlue => AquaColors.accent;
+  static Color get textBlue => AquaColors.textSecondary;
+  static Color get surfaceDark => AquaColors.input;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -145,7 +145,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                 right: 0,
                 child: Container(
                   height: 280,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -190,7 +190,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                   width: 1,
                                 ),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.arrow_back_ios_new,
                                 color: textBlue,
                                 size: 16,
@@ -206,14 +206,14 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                               color: primaryBlue.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.water_drop,
                               color: primaryBlue,
                               size: 20,
                             ),
                           ),
                           const SizedBox(width: 10),
-                          const Text(
+                          Text(
                             'AquaIntel',
                             style: TextStyle(
                               color: Colors.white,
@@ -235,7 +235,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Edit Profile',
                             style: TextStyle(
                               color: Colors.white,
@@ -347,7 +347,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
@@ -649,7 +649,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             child: AbsorbPointer(
               child: TextField(
                 controller: controller,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
@@ -791,7 +791,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ),
           ],
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
@@ -829,7 +829,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
+            colorScheme: ColorScheme.dark(
               primary: primaryBlue,
               onPrimary: Colors.white,
               surface: cardColor,
@@ -898,7 +898,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.logout_rounded, color: AquaColors.error, size: 22),
             SizedBox(width: 10),
@@ -958,7 +958,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white),
         ),
         backgroundColor: cardColor,
         behavior: SnackBarBehavior.floating,

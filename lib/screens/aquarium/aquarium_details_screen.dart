@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/aquarium_model.dart';
 import '../../services/aquarium_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/aquarium/aquarium_image_view.dart';
 import 'edit_aquarium_screen.dart';
 import '../community/create_post_screen.dart';
 
@@ -24,17 +25,17 @@ class AquariumDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AquaColors.bg,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AquaColors.textPrimary),
+        iconTheme: IconThemeData(color: AquaColors.textPrimary),
         title: Text(
           aquarium.name,
-          style: const TextStyle(
+          style: TextStyle(
             color: AquaColors.textPrimary,
             fontWeight: FontWeight.w600,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_outlined, color: AquaColors.accent),
+            icon: Icon(Icons.edit_outlined, color: AquaColors.accent),
             tooltip: 'Edit Aquarium',
             onPressed: () {
               Navigator.push(
@@ -46,7 +47,7 @@ class AquariumDetailsScreen extends StatelessWidget {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.people_outline, color: AquaColors.accent),
+            icon: Icon(Icons.people_outline, color: AquaColors.accent),
             tooltip: 'Share to Community',
             onPressed: () {
               Navigator.push(
@@ -58,7 +59,7 @@ class AquariumDetailsScreen extends StatelessWidget {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: AquaColors.error),
+            icon: Icon(Icons.delete_outline, color: AquaColors.error),
             tooltip: 'Delete Aquarium',
             onPressed: () => _confirmDelete(context),
           ),
@@ -76,8 +77,8 @@ class AquariumDetailsScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: Image.network(
-                      aquarium.imageUrl!,
+                    child: AquariumImageView(
+                      imageUrl: aquarium.imageUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                     ),
@@ -131,7 +132,7 @@ class AquariumDetailsScreen extends StatelessWidget {
                   border: Border.all(
                       color: AquaColors.accent.withValues(alpha: 0.2)),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.water,
                   color: AquaColors.accent,
                   size: 26,
@@ -144,7 +145,7 @@ class AquariumDetailsScreen extends StatelessWidget {
                   children: [
                     Text(
                       aquarium.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AquaColors.textPrimary,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -162,7 +163,7 @@ class AquariumDetailsScreen extends StatelessWidget {
                       ),
                       child: Text(
                         aquarium.type.toUpperCase(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AquaColors.accent,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -176,7 +177,7 @@ class AquariumDetailsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          const Text(
+          Text(
             'Tank Volume',
             style: TextStyle(
               color: AquaColors.textSecondary,
@@ -186,7 +187,7 @@ class AquariumDetailsScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             '${aquarium.volumeLitres.toStringAsFixed(1)} Litres',
-            style: const TextStyle(
+            style: TextStyle(
               color: AquaColors.textPrimary,
               fontSize: 30,
               fontWeight: FontWeight.bold,
@@ -209,7 +210,7 @@ class AquariumDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Tank Specifications',
             style: TextStyle(
               color: AquaColors.textPrimary,
@@ -270,7 +271,7 @@ class AquariumDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Record Info',
             style: TextStyle(
               color: AquaColors.textPrimary,
@@ -307,7 +308,7 @@ class AquariumDetailsScreen extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AquaColors.textSecondary,
                   fontSize: 12,
                 ),
@@ -315,7 +316,7 @@ class AquariumDetailsScreen extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AquaColors.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -334,19 +335,19 @@ class AquariumDetailsScreen extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AquaColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
+        title: Text(
           'Delete Aquarium?',
           style: TextStyle(color: AquaColors.textPrimary, fontWeight: FontWeight.bold),
         ),
         content: Text(
           'This will permanently delete "${aquarium.name}" and all its data. '
           'This action cannot be undone.',
-          style: const TextStyle(color: AquaColors.textSecondary, fontSize: 14),
+          style: TextStyle(color: AquaColors.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(

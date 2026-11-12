@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/community_post.dart';
 import '../../services/community_service.dart';
 import '../../theme/app_theme.dart';
+import 'author_avatar.dart';
 
 /// Modal bottom sheet that displays and allows adding/deleting comments
 /// for a given [CommunityPost].
@@ -77,7 +78,7 @@ class _CommentSheetState extends State<CommentSheet> {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(0, 60, 0, 0),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AquaColors.bgSecondary,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -98,7 +99,7 @@ class _CommentSheetState extends State<CommentSheet> {
             padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
             child: Row(
               children: [
-                const Text(
+                Text(
                   'Comments',
                   style: TextStyle(
                     color: AquaColors.textPrimary,
@@ -109,12 +110,12 @@ class _CommentSheetState extends State<CommentSheet> {
                 const Spacer(),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, color: AquaColors.textMuted, size: 20),
+                  child: Icon(Icons.close, color: AquaColors.textMuted, size: 20),
                 ),
               ],
             ),
           ),
-          const Divider(color: AquaColors.border, height: 1),
+          Divider(color: AquaColors.border, height: 1),
           // Comment list
           Expanded(
             child: StreamBuilder<List<PostComment>>(
@@ -137,7 +138,7 @@ class _CommentSheetState extends State<CommentSheet> {
                           size: 40,
                         ),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           'No comments yet.\nBe the first to comment!',
                           style: TextStyle(
                             color: AquaColors.textSecondary,
@@ -152,7 +153,7 @@ class _CommentSheetState extends State<CommentSheet> {
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: comments.length,
-                  separatorBuilder: (_, __) => const Divider(
+                  separatorBuilder: (_, __) => Divider(
                     color: AquaColors.border,
                     height: 1,
                     indent: 48,
@@ -169,7 +170,7 @@ class _CommentSheetState extends State<CommentSheet> {
           // Input row
           Container(
             padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + bottom),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AquaColors.bgSecondary,
               border: Border(top: BorderSide(color: AquaColors.border)),
             ),
@@ -181,11 +182,11 @@ class _CommentSheetState extends State<CommentSheet> {
                     focusNode: _focus,
                     maxLength: 1000,
                     maxLines: null,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AquaColors.textPrimary,
                       fontSize: 14,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Add a comment…',
                       counterText: '',
                       contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -245,11 +246,6 @@ class _CommentTile extends StatelessWidget {
     required this.onDelete,
   });
 
-  String get _initials {
-    final parts = comment.authorName.trim().split(' ');
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return comment.authorName.isNotEmpty ? comment.authorName[0].toUpperCase() : '?';
-  }
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
@@ -268,23 +264,10 @@ class _CommentTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Avatar
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AquaColors.accent.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                _initials,
-                style: const TextStyle(
-                  color: AquaColors.accent,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+          AuthorAvatar(
+            authorUid: comment.authorUid,
+            authorName: comment.authorName,
+            size: 32,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -295,7 +278,7 @@ class _CommentTile extends StatelessWidget {
                   children: [
                     Text(
                       comment.authorName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AquaColors.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -304,7 +287,7 @@ class _CommentTile extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       _timeAgo(comment.createdAt),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AquaColors.textMuted,
                         fontSize: 11,
                       ),
@@ -313,7 +296,7 @@ class _CommentTile extends StatelessWidget {
                       const Spacer(),
                       GestureDetector(
                         onTap: () => _confirmDelete(context),
-                        child: const Icon(
+                        child: Icon(
                           Icons.delete_outline,
                           color: AquaColors.error,
                           size: 16,
@@ -325,7 +308,7 @@ class _CommentTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   comment.text,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AquaColors.textSecondary,
                     fontSize: 13,
                     height: 1.4,
@@ -345,10 +328,10 @@ class _CommentTile extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AquaColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete comment?',
+        title: Text('Delete comment?',
             style: TextStyle(color: AquaColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AquaColors.error),
             onPressed: () {

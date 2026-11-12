@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/aquarium_model.dart';
 import '../screens/aquarium/aquarium_details_screen.dart';
 import '../theme/app_theme.dart';
+import 'aquarium/aquarium_image_view.dart';
 
 /// Reusable card widget that displays a single [AquariumModel] on the Dashboard.
 ///
@@ -64,7 +65,7 @@ class AquariumCard extends StatelessWidget {
                             color: AquaColors.accent.withValues(alpha: 0.2),
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.water,
                           color: AquaColors.accent,
                           size: 20,
@@ -77,7 +78,7 @@ class AquariumCard extends StatelessWidget {
                           children: [
                             Text(
                               aquarium.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AquaColors.textPrimary,
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
@@ -99,7 +100,7 @@ class AquariumCard extends StatelessWidget {
                               ),
                               child: Text(
                                 aquarium.type.toUpperCase(),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AquaColors.accent,
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -110,7 +111,7 @@ class AquariumCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         Icons.chevron_right,
                         color: AquaColors.textMuted,
                         size: 22,
@@ -121,7 +122,7 @@ class AquariumCard extends StatelessWidget {
                   const SizedBox(height: 14),
 
                   // ─── Divider ───
-                  const Divider(color: AquaColors.border, height: 1),
+                  Divider(color: AquaColors.border, height: 1),
 
                   const SizedBox(height: 12),
 
@@ -160,13 +161,10 @@ class AquariumCard extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (hasImage)
-            Image.network(
-              aquarium.imageUrl!,
+            AquariumImageView(
+              imageUrl: aquarium.imageUrl!,
               fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return _buildPlaceholder(isLoading: true);
-              },
+              placeholder: _buildPlaceholder(isLoading: true),
               errorBuilder: (context, error, stackTrace) {
                 return _buildPlaceholder(isLoading: false);
               },
@@ -201,7 +199,7 @@ class AquariumCard extends StatelessWidget {
   /// Attractive default placeholder when no image is available or while loading.
   Widget _buildPlaceholder({required bool isLoading}) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -234,7 +232,7 @@ class AquariumCard extends StatelessWidget {
                         color: AquaColors.accent.withValues(alpha: 0.25),
                       ),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.water_drop_outlined,
                       color: AquaColors.accent,
                       size: 24,
@@ -243,7 +241,7 @@ class AquariumCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     '${aquarium.type} Tank',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AquaColors.textMuted,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -262,7 +260,7 @@ class AquariumCard extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: AquaColors.textSecondary,
             fontSize: 13,
             fontWeight: FontWeight.w400,
@@ -271,7 +269,7 @@ class AquariumCard extends StatelessWidget {
         Flexible(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               color: AquaColors.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.w600,

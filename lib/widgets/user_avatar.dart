@@ -6,7 +6,8 @@ import '../theme/app_theme.dart';
 ///
 /// Features:
 /// - Displays one of 20 predefined avatars from `assets/images/avatars/`.
-/// - Automatic fallback to `avatar_01` if [avatarId] is null or invalid.
+/// - Automatic fallback to [fallback] widget (e.g. initials) or `avatar_01`
+///   if [avatarId] is null or invalid.
 /// - Circular clipping with [BoxFit.cover] and subtle container background.
 /// - Optional customizable border (e.g. cyan accent highlight).
 /// - Optional tap gesture handler.
@@ -19,6 +20,7 @@ class UserAvatar extends StatelessWidget {
   final VoidCallback? onTap;
   final List<BoxShadow>? boxShadow;
   final Color? backgroundColor;
+  final Widget? fallback;
 
   const UserAvatar({
     super.key,
@@ -30,10 +32,16 @@ class UserAvatar extends StatelessWidget {
     this.onTap,
     this.boxShadow,
     this.backgroundColor,
+    this.fallback,
   });
 
   @override
   Widget build(BuildContext context) {
+    if ((avatarId == null || !UserModel.isValidAvatarId(avatarId)) &&
+        fallback != null) {
+      return fallback!;
+    }
+
     final effectiveBorderColor = borderColor ?? AquaColors.accent;
     final effectiveBgColor = backgroundColor ?? AquaColors.cardElevated;
     final assetPath = UserModel.avatarAssetPath(avatarId);
@@ -59,6 +67,7 @@ class UserAvatar extends StatelessWidget {
           height: size,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
+            if (fallback != null) return fallback!;
             // Fallback gracefully to default avatar asset or person icon if missing
             return Image.asset(
               UserModel.avatarAssetPath(UserModel.defaultAvatarId),
@@ -89,4 +98,3 @@ class UserAvatar extends StatelessWidget {
     return avatarWidget;
   }
 }
-
